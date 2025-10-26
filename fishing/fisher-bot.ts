@@ -112,6 +112,7 @@ class FisherBot {
   private gasLimit: number;
   private rpcUrl: string;
   private wsUrl: string;
+  private apiBaseUrl: string;
   private processingTxs: Set<string> = new Set();
 
   constructor() {
@@ -125,6 +126,9 @@ class FisherBot {
     this.wsUrl =
       process.env.FISHER_WS_URL ||
       this.rpcUrl.replace('https://', 'wss://').replace('http://', 'ws://');
+
+    // API base URL for fishing pool
+    this.apiBaseUrl = process.env.NEXT_PUBLIC_FISHING_POOL_API || 'http://localhost:3000/api/fishing';
 
     this.account = privateKeyToAccount(privateKey as `0x${string}`);
     this.minPriorityFee = BigInt(process.env.FISHER_MIN_PRIORITY_FEE || '0');
@@ -247,9 +251,9 @@ class FisherBot {
    */
   async monitorFishingPool() {
     console.log('👀 Monitoring fishing pool for signed payment messages...\n');
-    console.log('   Payment API: http://localhost:3000/api/fishing/submit');
-    console.log('   PYUSD Faucet API: http://localhost:3000/api/fishing/submit-claim');
-    console.log('   MATE Faucet API: http://localhost:3000/api/fishing/submit-mate-claim\n');
+    console.log(`   Payment API: ${this.apiBaseUrl}/submit`);
+    console.log(`   PYUSD Faucet API: ${this.apiBaseUrl}/submit-claim`);
+    console.log(`   MATE Faucet API: ${this.apiBaseUrl}/submit-mate-claim\n`);
 
     // Handle graceful shutdown
     process.on('SIGINT', () => {
@@ -277,7 +281,7 @@ class FisherBot {
    */
   async checkFishingPool() {
     try {
-      const response = await fetch('http://localhost:3000/api/fishing/submit?pending=true&limit=10');
+      const response = await fetch(`${this.apiBaseUrl}/submit?pending=true&limit=10`);
 
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);
@@ -354,7 +358,7 @@ class FisherBot {
         console.log(`   Block: ${receipt.blockNumber}`);
 
         // Mark as executed in fishing pool
-        await fetch('http://localhost:3000/api/fishing/submit', {
+        await fetch(`${this.apiBaseUrl}/submit`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: tx.id, txHash: hash }),
@@ -382,7 +386,7 @@ class FisherBot {
    */
   async checkFaucetClaims() {
     try {
-      const response = await fetch('http://localhost:3000/api/fishing/submit-claim?pending=true&limit=10');
+      const response = await fetch(`${this.apiBaseUrl}/submit-claim?pending=true&limit=10`);
 
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);
@@ -449,7 +453,7 @@ class FisherBot {
         console.log(`   Block: ${receipt.blockNumber}`);
 
         // Mark as executed in fishing pool
-        await fetch('http://localhost:3000/api/fishing/submit-claim', {
+        await fetch(`${this.apiBaseUrl}/submit-claim`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: claim.id, txHash: hash }),
@@ -477,7 +481,7 @@ class FisherBot {
    */
   async checkMateFaucetClaims() {
     try {
-      const response = await fetch('http://localhost:3000/api/fishing/submit-mate-claim?pending=true&limit=10');
+      const response = await fetch(`${this.apiBaseUrl}/submit-mate-claim?pending=true&limit=10`);
 
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);
@@ -544,7 +548,7 @@ class FisherBot {
         console.log(`   Block: ${receipt.blockNumber}`);
 
         // Mark as executed in fishing pool
-        await fetch('http://localhost:3000/api/fishing/submit-mate-claim', {
+        await fetch(`${this.apiBaseUrl}/submit-mate-claim`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: claim.id, txHash: hash }),

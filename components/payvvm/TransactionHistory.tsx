@@ -2,20 +2,50 @@
 
 import { useState, useEffect } from 'react';
 import { formatUnits } from 'viem';
+import { usePublicClient } from 'wagmi';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, ExternalLink, ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
-import {
-  fetchPayVVMTransactions,
-  fetchETHTransfers,
-  fetchPYUSDTransfers,
-  type PayVVMTransaction,
-  type ETHTransfer,
-  type PYUSDTransfer,
-  PYUSD_TOKEN,
-} from '@/services/hypersync';
+
+// Type definitions (matching utils/hypersync.ts)
+interface PayVVMTransaction {
+  hash: string;
+  blockNumber: number;
+  timestamp: number;
+  from: string;
+  to: string;
+  token: string;
+  amount: string;
+  type: 'send' | 'receive';
+  executedBy: string;
+  gasUsed?: string;
+}
+
+interface ETHTransfer {
+  hash: string;
+  blockNumber: number;
+  timestamp: number;
+  from: string;
+  to: string;
+  value: string;
+  type: 'send' | 'receive';
+  gasUsed?: string;
+}
+
+interface PYUSDTransfer {
+  hash: string;
+  blockNumber: number;
+  timestamp: number;
+  from: string;
+  to: string;
+  value: string;
+  type: 'send' | 'receive';
+  logIndex: number;
+}
+
+const PYUSD_TOKEN = '0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9';
 
 interface TransactionHistoryProps {
   address: string | null;
@@ -28,6 +58,7 @@ export function TransactionHistory({ address, limit = 50 }: TransactionHistoryPr
   const [pyusdTxs, setPyusdTxs] = useState<PYUSDTransfer[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('payvvm');
+  const publicClient = usePublicClient();
 
   useEffect(() => {
     async function loadTransactions() {
@@ -38,15 +69,39 @@ export function TransactionHistory({ address, limit = 50 }: TransactionHistoryPr
 
       setLoading(true);
       try {
-        const [payvvm, eth, pyusd] = await Promise.all([
-          fetchPayVVMTransactions(address, limit),
-          fetchETHTransfers(address, limit),
-          fetchPYUSDTransfers(address, limit),
+        // Get current block number
+        const currentBlock = await publicClient?.getBlockNumber();
+        if (!currentBlock) {
+          throw new Error('Failed to get current block number');
+        }
+
+        // Query last 50,000 blocks for comprehensive history
+        const fromBlock = Number(currentBlock) - 50000;
+        const toBlock = Number(currentBlock);
+
+        // Call API routes instead of HyperSync directly
+        const params = new URLSearchParams({
+          address,
+          fromBlock: fromBlock.toString(),
+          toBlock: toBlock.toString(),
+          limit: limit.toString(),
+        });
+
+        const [payvvmRes, ethRes, pyusdRes] = await Promise.all([
+          fetch(`/api/explorer?${params.toString()}&type=payvvm`),
+          fetch(`/api/explorer?${params.toString()}&type=eth`),
+          fetch(`/api/explorer?${params.toString()}&type=pyusd`),
         ]);
 
-        setPayvvmTxs(payvvm);
-        setEthTxs(eth);
-        setPyusdTxs(pyusd);
+        const [payvvmData, ethData, pyusdData] = await Promise.all([
+          payvvmRes.json(),
+          ethRes.json(),
+          pyusdRes.json(),
+        ]);
+
+        setPayvvmTxs(payvvmData.transactions || []);
+        setEthTxs(ethData.transactions || []);
+        setPyusdTxs(pyusdData.transactions || []);
       } catch (error) {
         console.error('Error loading transactions:', error);
       } finally {
@@ -55,7 +110,7 @@ export function TransactionHistory({ address, limit = 50 }: TransactionHistoryPr
     }
 
     loadTransactions();
-  }, [address, limit]);
+  }, [address, limit, publicClient]);
 
   if (!address) {
     return (
@@ -134,8 +189,7 @@ function PayVVMTransactionList({ transactions, userAddress }: { transactions: Pa
   return (
     <div className="space-y-3">
       {transactions.map((tx) => {
-        const isSender = tx.from.toLowerCase() === userAddress.toLowerCase();
-        const isReceiver = tx.to.toLowerCase() === userAddress.toLowerCase();
+        const isSender = tx.type === 'send';
 
         return (
           <Card key={tx.hash} className="bg-card/50 backdrop-blur border-primary/50">
@@ -152,11 +206,8 @@ function PayVVMTransactionList({ transactions, userAddress }: { transactions: Pa
                     <Badge variant="outline" className="font-mono text-xs border-primary/50">
                       {isSender ? 'SENT' : 'RECEIVED'}
                     </Badge>
-                    <Badge
-                      variant={tx.status === 'success' ? 'default' : 'destructive'}
-                      className="font-mono text-xs"
-                    >
-                      {tx.status}
+                    <Badge variant="outline" className="font-mono text-xs border-amber-500/50">
+                      Gasless
                     </Badge>
                   </div>
 
@@ -172,6 +223,9 @@ function PayVVMTransactionList({ transactions, userAddress }: { transactions: Pa
                         {tx.token.toLowerCase() === PYUSD_TOKEN.toLowerCase() ? 'PYUSD' : 'MATE'}
                       </span>
                     </p>
+                    <p className="text-muted-foreground">
+                      Fisher: <span className="text-foreground">{tx.executedBy.slice(0, 6)}...{tx.executedBy.slice(-4)}</span>
+                    </p>
                   </div>
                 </div>
 
@@ -179,16 +233,11 @@ function PayVVMTransactionList({ transactions, userAddress }: { transactions: Pa
                 <div className="text-right">
                   <p className="text-lg font-bold font-mono">
                     {isSender && '-'}
-                    {formatUnits(tx.amount, tx.token.toLowerCase() === PYUSD_TOKEN.toLowerCase() ? 6 : 18)}
+                    {formatUnits(BigInt(tx.amount), tx.token.toLowerCase() === PYUSD_TOKEN.toLowerCase() ? 6 : 18)}
                   </p>
                   <p className="text-xs text-muted-foreground font-mono">
                     {tx.token.toLowerCase() === PYUSD_TOKEN.toLowerCase() ? 'PYUSD' : 'MATE'}
                   </p>
-                  {tx.priorityFee > 0n && (
-                    <p className="text-xs text-primary font-mono">
-                      +{formatUnits(tx.priorityFee, 6)} fee
-                    </p>
-                  )}
                 </div>
 
                 {/* Right: Link and timestamp */}
@@ -234,7 +283,7 @@ function ETHTransactionList({ transactions, userAddress }: { transactions: ETHTr
   return (
     <div className="space-y-3">
       {transactions.map((tx) => {
-        const isSender = tx.from.toLowerCase() === userAddress.toLowerCase();
+        const isSender = tx.type === 'send';
 
         return (
           <Card key={tx.hash} className="bg-card/50 backdrop-blur border-primary/50">
@@ -249,12 +298,6 @@ function ETHTransactionList({ transactions, userAddress }: { transactions: ETHTr
                     )}
                     <Badge variant="outline" className="font-mono text-xs border-primary/50">
                       {isSender ? 'SENT' : 'RECEIVED'}
-                    </Badge>
-                    <Badge
-                      variant={tx.status === 'success' ? 'default' : 'destructive'}
-                      className="font-mono text-xs"
-                    >
-                      {tx.status}
                     </Badge>
                   </div>
 
@@ -271,7 +314,7 @@ function ETHTransactionList({ transactions, userAddress }: { transactions: ETHTr
                 <div className="text-right">
                   <p className="text-lg font-bold font-mono">
                     {isSender && '-'}
-                    {formatUnits(tx.value, 18)}
+                    {formatUnits(BigInt(tx.value), 18)}
                   </p>
                   <p className="text-xs text-muted-foreground font-mono">ETH</p>
                 </div>
@@ -318,10 +361,10 @@ function PYUSDTransactionList({ transactions, userAddress }: { transactions: PYU
   return (
     <div className="space-y-3">
       {transactions.map((tx, idx) => {
-        const isSender = tx.from.toLowerCase() === userAddress.toLowerCase();
+        const isSender = tx.type === 'send';
 
         return (
-          <Card key={`${tx.hash}-${idx}`} className="bg-card/50 backdrop-blur border-primary/50">
+          <Card key={`${tx.hash}-${tx.logIndex}`} className="bg-card/50 backdrop-blur border-primary/50">
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 space-y-2">
@@ -349,7 +392,7 @@ function PYUSDTransactionList({ transactions, userAddress }: { transactions: PYU
                 <div className="text-right">
                   <p className="text-lg font-bold font-mono">
                     {isSender && '-'}
-                    {formatUnits(tx.value, 6)}
+                    {formatUnits(BigInt(tx.value), 6)}
                   </p>
                   <p className="text-xs text-muted-foreground font-mono">PYUSD</p>
                 </div>

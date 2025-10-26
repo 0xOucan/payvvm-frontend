@@ -39,6 +39,7 @@
   },
   "dependencies": {
     "@envio-dev/hypersync-client": "^0.6.6",
+    "@envio-dev/hypersync-client-linux-x64-gnu": "^0.6.6",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "1.2.2",
     "@radix-ui/react-alert-dialog": "1.1.4",

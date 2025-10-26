@@ -11,6 +11,9 @@ importers:
       '@envio-dev/hypersync-client':
         specifier: ^0.6.6
         version: 0.6.6
+      '@envio-dev/hypersync-client-linux-x64-gnu':
+        specifier: ^0.6.6
+        version: 0.6.6
       '@hookform/resolvers':
         specifier: ^3.10.0
         version: 3.10.0(react-hook-form@7.65.0(react@19.2.0))
@@ -3590,8 +3593,7 @@ snapshots:
   '@envio-dev/hypersync-client-linux-arm64-gnu@0.6.6':
     optional: true
 
-  '@envio-dev/hypersync-client-linux-x64-gnu@0.6.6':
-    optional: true
+  '@envio-dev/hypersync-client-linux-x64-gnu@0.6.6': {}
 
   '@envio-dev/hypersync-client-linux-x64-musl@0.6.6':
     optional: true
