@@ -27,9 +27,13 @@
   "homepage": "https://github.com/0xOucan/payvvm-frontend#readme",
   "scripts": {
     "build": "next build",
-    "dev": "next dev",
+    "dev": "concurrently \"pnpm dev:next\" \"pnpm dev:fisher\" --names \"next,fisher\" --prefix-colors \"cyan,green\"",
+    "dev:next": "next dev",
+    "dev:fisher": "tsx watch fishing/fisher-bot.ts",
     "lint": "eslint .",
-    "start": "next start",
+    "start": "concurrently \"pnpm start:next\" \"pnpm start:fisher\" --names \"next,fisher\" --prefix-colors \"cyan,green\"",
+    "start:next": "next start",
+    "start:fisher": "tsx fishing/fisher-bot.ts",
     "fisher:start": "tsx fishing/fisher-bot.ts",
     "fisher:dev": "tsx watch fishing/fisher-bot.ts"
   },
@@ -96,6 +100,7 @@
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.2.1",
     "dotenv": "^17.2.3",
     "postcss": "^8.5",
     "tailwindcss": "^4.1.9",
