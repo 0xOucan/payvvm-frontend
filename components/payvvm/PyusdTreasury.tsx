@@ -2,6 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, CheckCircle2, AlertCircle, ExternalLink, Info } from 'lucide-react';
 import {
   usePyusdWalletBalance,
   usePyusdEvvmBalance,
@@ -11,13 +19,12 @@ import {
   useWithdrawPyusd,
   PYUSD_ADDRESS,
   TREASURY_ADDRESS,
-} from '~~/hooks/payvvm/usePyusdTreasury';
+} from '@/hooks/payvvm/usePyusdTreasury';
 
 export const PyusdTreasury = () => {
   const { address, isConnected } = useAccount();
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit');
 
   // Balances
   const walletBalance = usePyusdWalletBalance();
@@ -29,10 +36,9 @@ export const PyusdTreasury = () => {
   const deposit = useDepositPyusd();
   const withdraw = useWithdrawPyusd();
 
-  // Refetch balances after successful transactions with delay to ensure blockchain state is updated
+  // Refetch balances after successful transactions
   useEffect(() => {
     if (approve.isSuccess) {
-      // Add delay to ensure blockchain state has propagated
       const timer = setTimeout(() => {
         allowance.refetch();
       }, 500);
@@ -42,7 +48,6 @@ export const PyusdTreasury = () => {
 
   useEffect(() => {
     if (deposit.isSuccess) {
-      // Add delay to ensure blockchain state has propagated
       const timer = setTimeout(() => {
         walletBalance.refetch();
         evvmBalance.refetch();
@@ -55,7 +60,6 @@ export const PyusdTreasury = () => {
 
   useEffect(() => {
     if (withdraw.isSuccess) {
-      // Add delay to ensure blockchain state has propagated
       const timer = setTimeout(() => {
         walletBalance.refetch();
         evvmBalance.refetch();
@@ -67,7 +71,6 @@ export const PyusdTreasury = () => {
 
   const handleApprove = () => {
     if (!depositAmount || parseFloat(depositAmount) <= 0) {
-      alert('Please enter a valid amount');
       return;
     }
     approve.approve(depositAmount);
@@ -75,7 +78,6 @@ export const PyusdTreasury = () => {
 
   const handleDeposit = () => {
     if (!depositAmount || parseFloat(depositAmount) <= 0) {
-      alert('Please enter a valid amount');
       return;
     }
     deposit.deposit(depositAmount);
@@ -83,7 +85,6 @@ export const PyusdTreasury = () => {
 
   const handleWithdraw = () => {
     if (!withdrawAmount || parseFloat(withdrawAmount) <= 0) {
-      alert('Please enter a valid amount');
       return;
     }
     withdraw.withdraw(withdrawAmount);
@@ -102,398 +103,318 @@ export const PyusdTreasury = () => {
 
   if (!isConnected) {
     return (
-      <div className="card bg-base-100 shadow-xl">
-        <div className="card-body">
-          <h2 className="card-title text-2xl">PYUSD Treasury</h2>
-          <div className="alert alert-warning">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="stroke-current shrink-0 h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
-            <span>Please connect your wallet to use the Treasury</span>
-          </div>
-        </div>
-      </div>
+      <Card className="bg-card/50 backdrop-blur border-primary/50">
+        <CardHeader>
+          <CardTitle className="font-mono">PYUSD Treasury</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Alert className="border-amber-500/50 bg-amber-500/10">
+            <AlertCircle className="h-4 w-4 text-amber-500" />
+            <AlertDescription>
+              Please connect your wallet to use the Treasury
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="card bg-base-100 shadow-xl">
-      <div className="card-body">
-        <h2 className="card-title text-2xl mb-4">PYUSD Treasury</h2>
-
-        {/* Balance Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <div className="stat bg-base-200 rounded-lg">
-            <div className="stat-title">Wallet Balance</div>
-            <div className="stat-value text-2xl">
+    <div className="space-y-6">
+      {/* Balance Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="bg-card/50 backdrop-blur border-primary/50">
+          <CardHeader>
+            <CardTitle className="text-sm font-mono text-muted-foreground">Wallet Balance</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
               {walletBalance.isLoading ? (
-                <span className="loading loading-spinner loading-sm"></span>
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm text-muted-foreground">Loading...</span>
+                </div>
               ) : (
-                `${parseFloat(walletBalance.formatted).toFixed(2)} PYUSD`
-              )}
-            </div>
-            <div className="stat-desc">Available to deposit</div>
-          </div>
-
-          <div className="stat bg-base-200 rounded-lg">
-            <div className="stat-title">EVVM Balance</div>
-            <div className="stat-value text-2xl">
-              {evvmBalance.isLoading ? (
-                <span className="loading loading-spinner loading-sm"></span>
-              ) : (
-                `${parseFloat(evvmBalance.formatted).toFixed(2)} PYUSD`
-              )}
-            </div>
-            <div className="stat-desc">In PayVVM</div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="tabs tabs-boxed mb-4">
-          <a
-            className={`tab ${activeTab === 'deposit' ? 'tab-active' : ''}`}
-            onClick={() => setActiveTab('deposit')}
-          >
-            Deposit
-          </a>
-          <a
-            className={`tab ${activeTab === 'withdraw' ? 'tab-active' : ''}`}
-            onClick={() => setActiveTab('withdraw')}
-          >
-            Withdraw
-          </a>
-        </div>
-
-        {/* Deposit Tab */}
-        {activeTab === 'deposit' && (
-          <div className="space-y-4">
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Amount to Deposit</span>
-                <span className="label-text-alt">
-                  Max: {parseFloat(walletBalance.formatted).toFixed(2)} PYUSD
-                </span>
-              </label>
-              <div className="join">
-                <input
-                  type="number"
-                  placeholder="0.00"
-                  className="input input-bordered join-item flex-1"
-                  value={depositAmount}
-                  onChange={(e) => setDepositAmount(e.target.value)}
-                  step="0.01"
-                  min="0"
-                />
-                <button
-                  className="btn join-item"
-                  onClick={() => setDepositAmount(walletBalance.formatted)}
-                >
-                  MAX
-                </button>
-              </div>
-            </div>
-
-            {/* Allowance Info */}
-            <div className="alert alert-info">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                className="stroke-current shrink-0 w-6 h-6"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                ></path>
-              </svg>
-              <span className="text-sm">
-                Current Allowance: {parseFloat(allowance.formatted).toFixed(2)} PYUSD
-              </span>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-2">
-              {needsApproval(depositAmount) && (
-                <button
-                  className="btn btn-secondary flex-1"
-                  onClick={handleApprove}
-                  disabled={approve.isPending || approve.isConfirming}
-                >
-                  {approve.isPending || approve.isConfirming ? (
-                    <>
-                      <span className="loading loading-spinner loading-sm"></span>
-                      {approve.isPending ? 'Approving...' : 'Confirming...'}
-                    </>
-                  ) : (
-                    '1. Approve PYUSD'
-                  )}
-                </button>
-              )}
-
-              <button
-                className="btn btn-primary flex-1"
-                onClick={handleDeposit}
-                disabled={
-                  needsApproval(depositAmount) ||
-                  deposit.isPending ||
-                  deposit.isConfirming ||
-                  !depositAmount ||
-                  parseFloat(depositAmount) <= 0
-                }
-              >
-                {deposit.isPending || deposit.isConfirming ? (
-                  <>
-                    <span className="loading loading-spinner loading-sm"></span>
-                    {deposit.isPending ? 'Depositing...' : 'Confirming...'}
-                  </>
-                ) : needsApproval(depositAmount) ? (
-                  '2. Deposit to Treasury'
-                ) : (
-                  'Deposit to Treasury'
-                )}
-              </button>
-            </div>
-
-            {/* Transaction Status */}
-            {approve.isSuccess && (
-              <div className="alert alert-success">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="stroke-current shrink-0 h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <span>Approval successful! Now you can deposit.</span>
-              </div>
-            )}
-
-            {deposit.isSuccess && (
-              <div className="alert alert-success">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="stroke-current shrink-0 h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <span>Deposit successful!</span>
-              </div>
-            )}
-
-            {(approve.error || deposit.error) && (
-              <div className="alert alert-error">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="stroke-current shrink-0 h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <span>
-                  {approve.error?.message || deposit.error?.message || 'Transaction failed'}
-                </span>
-              </div>
-            )}
-
-            {/* Info Box */}
-            <div className="alert">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                className="stroke-info shrink-0 w-6 h-6"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                ></path>
-              </svg>
-              <div className="text-sm">
-                <p className="font-bold">How deposits work:</p>
-                <ol className="list-decimal list-inside mt-2 space-y-1">
-                  <li>Approve the Treasury contract to spend your PYUSD</li>
-                  <li>Deposit PYUSD to the Treasury</li>
-                  <li>Your PYUSD balance appears in EVVM immediately</li>
-                </ol>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Withdraw Tab */}
-        {activeTab === 'withdraw' && (
-          <div className="space-y-4">
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Amount to Withdraw</span>
-                <span className="label-text-alt">
-                  Max: {parseFloat(evvmBalance.formatted).toFixed(2)} PYUSD
-                </span>
-              </label>
-              <div className="join">
-                <input
-                  type="number"
-                  placeholder="0.00"
-                  className="input input-bordered join-item flex-1"
-                  value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
-                  step="0.01"
-                  min="0"
-                />
-                <button
-                  className="btn join-item"
-                  onClick={() => setWithdrawAmount(evvmBalance.formatted)}
-                >
-                  MAX
-                </button>
-              </div>
-            </div>
-
-            <button
-              className="btn btn-primary w-full"
-              onClick={handleWithdraw}
-              disabled={
-                withdraw.isPending ||
-                withdraw.isConfirming ||
-                !withdrawAmount ||
-                parseFloat(withdrawAmount) <= 0 ||
-                parseFloat(withdrawAmount) > parseFloat(evvmBalance.formatted)
-              }
-            >
-              {withdraw.isPending || withdraw.isConfirming ? (
                 <>
-                  <span className="loading loading-spinner loading-sm"></span>
-                  {withdraw.isPending ? 'Withdrawing...' : 'Confirming...'}
+                  <p className="text-3xl font-bold font-mono">{parseFloat(walletBalance.formatted).toFixed(2)}</p>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="font-mono text-xs">PYUSD</Badge>
+                    <span className="text-xs text-muted-foreground">Available to deposit</span>
+                  </div>
                 </>
-              ) : (
-                'Withdraw from Treasury'
               )}
-            </button>
+            </div>
+          </CardContent>
+        </Card>
 
-            {withdraw.isSuccess && (
-              <div className="alert alert-success">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="stroke-current shrink-0 h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+        <Card className="bg-gradient-to-br from-primary/20 to-primary/5 border-primary/50 pixel-border">
+          <CardHeader>
+            <CardTitle className="text-sm font-mono text-muted-foreground">EVVM Balance</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {evvmBalance.isLoading ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm text-muted-foreground">Loading...</span>
+                </div>
+              ) : (
+                <>
+                  <p className="text-3xl font-bold font-mono">{parseFloat(evvmBalance.formatted).toFixed(2)}</p>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="font-mono text-xs bg-background/50">PYUSD</Badge>
+                    <span className="text-xs text-muted-foreground">In PayVVM</span>
+                  </div>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tabs for Deposit/Withdraw */}
+      <Card className="bg-card/50 backdrop-blur border-primary/50">
+        <CardHeader>
+          <CardTitle className="font-mono">PYUSD Treasury</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="deposit" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="deposit" className="font-mono">Deposit</TabsTrigger>
+              <TabsTrigger value="withdraw" className="font-mono">Withdraw</TabsTrigger>
+            </TabsList>
+
+            {/* Deposit Tab */}
+            <TabsContent value="deposit" className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="deposit-amount">Amount to Deposit</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="deposit-amount"
+                    type="number"
+                    step="0.000001"
+                    placeholder="0.00"
+                    value={depositAmount}
+                    onChange={(e) => setDepositAmount(e.target.value)}
+                    className="flex-1 font-mono"
                   />
-                </svg>
-                <span>Withdrawal successful!</span>
+                  <Button
+                    variant="outline"
+                    onClick={() => setDepositAmount(walletBalance.formatted)}
+                  >
+                    MAX
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Max: {parseFloat(walletBalance.formatted).toFixed(2)} PYUSD
+                </p>
               </div>
-            )}
 
-            {withdraw.error && (
-              <div className="alert alert-error">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="stroke-current shrink-0 h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
+              {/* Allowance Info */}
+              <Alert className="border-primary/30 bg-primary/5">
+                <Info className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  Current Allowance: <span className="font-mono">{parseFloat(allowance.formatted).toFixed(2)} PYUSD</span>
+                </AlertDescription>
+              </Alert>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                {needsApproval(depositAmount) && (
+                  <Button
+                    variant="secondary"
+                    onClick={handleApprove}
+                    disabled={approve.isPending || approve.isConfirming}
+                    className="flex-1 font-mono"
+                  >
+                    {approve.isPending || approve.isConfirming ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {approve.isPending ? 'Approving...' : 'Confirming...'}
+                      </>
+                    ) : (
+                      '1. Approve PYUSD'
+                    )}
+                  </Button>
+                )}
+
+                <Button
+                  onClick={handleDeposit}
+                  disabled={
+                    needsApproval(depositAmount) ||
+                    deposit.isPending ||
+                    deposit.isConfirming ||
+                    !depositAmount ||
+                    parseFloat(depositAmount) <= 0
+                  }
+                  className="flex-1 font-mono glitch-hover"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <span>{withdraw.error.message || 'Transaction failed'}</span>
+                  {deposit.isPending || deposit.isConfirming ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {deposit.isPending ? 'Depositing...' : 'Confirming...'}
+                    </>
+                  ) : needsApproval(depositAmount) ? (
+                    '2. Deposit to Treasury'
+                  ) : (
+                    'Deposit to Treasury'
+                  )}
+                </Button>
               </div>
-            )}
 
-            <div className="alert">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                className="stroke-info shrink-0 w-6 h-6"
+              {/* Transaction Status */}
+              {approve.isSuccess && (
+                <Alert className="border-green-500/50 bg-green-500/10">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <AlertDescription>
+                    Approval successful! Now you can deposit.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {deposit.isSuccess && (
+                <Alert className="border-green-500/50 bg-green-500/10">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <AlertDescription>
+                    Deposit successful!
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {(approve.error || deposit.error) && (
+                <Alert className="border-red-500/50 bg-red-500/10">
+                  <AlertCircle className="h-4 w-4 text-red-500" />
+                  <AlertDescription className="text-xs">
+                    {approve.error?.message || deposit.error?.message || 'Transaction failed'}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Info Box */}
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  <p className="font-bold mb-2">How deposits work:</p>
+                  <ol className="list-decimal list-inside space-y-1">
+                    <li>Approve the Treasury contract to spend your PYUSD</li>
+                    <li>Deposit PYUSD to the Treasury</li>
+                    <li>Your PYUSD balance appears in EVVM immediately</li>
+                  </ol>
+                </AlertDescription>
+              </Alert>
+            </TabsContent>
+
+            {/* Withdraw Tab */}
+            <TabsContent value="withdraw" className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="withdraw-amount">Amount to Withdraw</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="withdraw-amount"
+                    type="number"
+                    step="0.000001"
+                    placeholder="0.00"
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    className="flex-1 font-mono"
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => setWithdrawAmount(evvmBalance.formatted)}
+                  >
+                    MAX
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Max: {parseFloat(evvmBalance.formatted).toFixed(2)} PYUSD
+                </p>
+              </div>
+
+              <Button
+                onClick={handleWithdraw}
+                disabled={
+                  withdraw.isPending ||
+                  withdraw.isConfirming ||
+                  !withdrawAmount ||
+                  parseFloat(withdrawAmount) <= 0 ||
+                  parseFloat(withdrawAmount) > parseFloat(evvmBalance.formatted)
+                }
+                className="w-full font-mono glitch-hover"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                ></path>
-              </svg>
-              <div className="text-sm">
-                <p className="font-bold">How withdrawals work:</p>
-                <ol className="list-decimal list-inside mt-2 space-y-1">
-                  <li>Enter the amount you want to withdraw</li>
-                  <li>Confirm the transaction</li>
-                  <li>PYUSD will be transferred to your wallet</li>
-                </ol>
+                {withdraw.isPending || withdraw.isConfirming ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {withdraw.isPending ? 'Withdrawing...' : 'Confirming...'}
+                  </>
+                ) : (
+                  'Withdraw from Treasury'
+                )}
+              </Button>
+
+              {withdraw.isSuccess && (
+                <Alert className="border-green-500/50 bg-green-500/10">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <AlertDescription>
+                    Withdrawal successful!
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {withdraw.error && (
+                <Alert className="border-red-500/50 bg-red-500/10">
+                  <AlertCircle className="h-4 w-4 text-red-500" />
+                  <AlertDescription className="text-xs">
+                    {withdraw.error.message || 'Transaction failed'}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  <p className="font-bold mb-2">How withdrawals work:</p>
+                  <ol className="list-decimal list-inside space-y-1">
+                    <li>Enter the amount you want to withdraw</li>
+                    <li>Confirm the transaction</li>
+                    <li>PYUSD will be transferred to your wallet</li>
+                  </ol>
+                </AlertDescription>
+              </Alert>
+            </TabsContent>
+          </Tabs>
+
+          {/* Contract Addresses */}
+          <div className="mt-6 pt-6 border-t border-primary/20">
+            <p className="text-xs font-mono text-muted-foreground mb-3">Contract Addresses</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">PYUSD:</span>
+                <a
+                  href={`https://sepolia.etherscan.io/address/${PYUSD_ADDRESS}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  {PYUSD_ADDRESS.slice(0, 6)}...{PYUSD_ADDRESS.slice(-4)}
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">Treasury:</span>
+                <a
+                  href={`https://sepolia.etherscan.io/address/${TREASURY_ADDRESS}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  {TREASURY_ADDRESS.slice(0, 6)}...{TREASURY_ADDRESS.slice(-4)}
+                  <ExternalLink className="h-3 w-3" />
+                </a>
               </div>
             </div>
           </div>
-        )}
-
-        {/* Contract Addresses */}
-        <div className="divider">Contract Addresses</div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-          <div>
-            <span className="font-bold">PYUSD:</span>{' '}
-            <a
-              href={`https://sepolia.etherscan.io/address/${PYUSD_ADDRESS}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="link link-primary font-mono"
-            >
-              {PYUSD_ADDRESS.slice(0, 6)}...{PYUSD_ADDRESS.slice(-4)}
-            </a>
-          </div>
-          <div>
-            <span className="font-bold">Treasury:</span>{' '}
-            <a
-              href={`https://sepolia.etherscan.io/address/${TREASURY_ADDRESS}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="link link-primary font-mono"
-            >
-              {TREASURY_ADDRESS.slice(0, 6)}...{TREASURY_ADDRESS.slice(-4)}
-            </a>
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
