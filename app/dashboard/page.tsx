@@ -9,9 +9,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Send, FileText, ArrowDownToLine, Droplets, Search, ExternalLink, Loader2, AlertCircle } from "lucide-react"
+import { Send, FileText, ArrowUpDown, Droplets, Search, ExternalLink, Loader2, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { usePyusdEvvmBalance, usePyusdWalletBalance } from "@/hooks/payvvm/usePyusdTreasury"
+import { useUserBalance } from "@/hooks/payvvm/useEvvmState"
 import { useBalance } from "wagmi"
 import { formatUnits } from "viem"
 
@@ -19,6 +20,8 @@ interface Balance {
   symbol: string
   amount: string
 }
+
+const MATE_TOKEN = '0x0000000000000000000000000000000000000001' as `0x${string}`
 
 export default function DashboardPage() {
   const { address, isConnected } = useAccount()
@@ -33,8 +36,8 @@ export default function DashboardPage() {
     address: address,
   })
 
-  // MATE balance from EVVM (using mock for now - TODO: implement real MATE balance hook)
-  const [mateBalance, setMateBalance] = useState("0.00")
+  // MATE balance from EVVM
+  const mateEvvmBalance = useUserBalance(address, MATE_TOKEN)
 
   useEffect(() => {
     if (!isConnected) {
@@ -47,7 +50,7 @@ export default function DashboardPage() {
     return null
   }
 
-  const loading = pyusdEvvmBalance.isLoading || pyusdWalletBalance.isLoading || ethBalance.isLoading
+  const loading = pyusdEvvmBalance.isLoading || pyusdWalletBalance.isLoading || ethBalance.isLoading || mateEvvmBalance.isLoading
 
   if (loading) {
     return (
@@ -63,7 +66,7 @@ export default function DashboardPage() {
   const mateBalances: Balance[] = [
     {
       symbol: "MATE",
-      amount: mateBalance,
+      amount: mateEvvmBalance.data ? parseFloat(formatUnits(mateEvvmBalance.data, 18)).toFixed(2) : "0.00",
     },
   ]
 
@@ -125,8 +128,8 @@ export default function DashboardPage() {
 
             <Button asChild variant="outline" className="flex-col h-auto py-4 gap-2 bg-transparent border-primary/50 hover:bg-primary/5">
               <Link href="/withdraw">
-                <ArrowDownToLine className="h-5 w-5" />
-                <span className="text-xs font-mono">Withdraw</span>
+                <ArrowUpDown className="h-5 w-5" />
+                <span className="text-xs font-mono">Treasury</span>
               </Link>
             </Button>
 
