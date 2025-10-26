@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAccount } from 'wagmi';
 import { isAddress } from 'viem';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,20 +21,34 @@ export const PyusdPayment = () => {
   const [priorityFee, setPriorityFee] = useState('0');
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  // Track submitted signatures to prevent duplicates
+  const submittedSignaturesRef = useRef<Set<string>>(new Set());
+
   const evvmBalance = usePyusdEvvmBalance();
   const payment = useEvvmPayment();
 
   // Auto-submit to fishing pool after signature is obtained
   useEffect(() => {
     if (payment.signature && !payment.hash && !payment.isExecuting) {
+      // Check if we've already submitted this signature
+      if (submittedSignaturesRef.current.has(payment.signature)) {
+        console.log('⚠️ Signature already submitted, skipping duplicate submission');
+        return;
+      }
+
+      // Mark signature as submitted
+      submittedSignaturesRef.current.add(payment.signature);
+
       payment.submitToFishers().then(() => {
         console.log('✅ Payment submitted to fishing pool - fishers will execute it');
       }).catch((error) => {
         console.error('❌ Failed to submit to fishing pool:', error);
+        // Remove from submitted set if submission failed so we can retry
+        submittedSignaturesRef.current.delete(payment.signature!);
         // Do NOT execute directly - fisher bot should handle this
       });
     }
-  }, [payment]);
+  }, [payment.signature, payment.hash, payment.isExecuting]);
 
   // Reset form after successful payment
   useEffect(() => {

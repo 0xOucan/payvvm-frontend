@@ -237,12 +237,12 @@ export const PyusdFaucet = () => {
           <p className="text-xs text-muted-foreground font-mono">
             Faucet:{" "}
             <a
-              href="https://sepolia.etherscan.io/address/0x5b73C5498c1E3b4dbA84de0F1833c4a029d90519"
+              href="https://sepolia.etherscan.io/address/0x74F7A28aF1241cfBeC7c6DBf5e585Afc18832a9a"
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary hover:underline"
             >
-              0x5b73...0519
+              0x74F7...2a9a
             </a>
           </p>
           <p className="text-xs text-muted-foreground font-mono">EVVM ID: {faucet.evvmId?.toString() || "Loading..."}</p>
