@@ -3,8 +3,16 @@
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { isAddress } from 'viem';
-import { useEvvmPayment } from '~~/hooks/payvvm/useEvvmPayment';
-import { usePyusdEvvmBalance, PYUSD_ADDRESS } from '~~/hooks/payvvm/usePyusdTreasury';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Loader2, CheckCircle2, AlertCircle, ExternalLink, Info, ChevronDown } from 'lucide-react';
+import { useEvvmPayment } from '@/hooks/payvvm/useEvvmPayment';
+import { usePyusdEvvmBalance, PYUSD_ADDRESS } from '@/hooks/payvvm/usePyusdTreasury';
 
 export const PyusdPayment = () => {
   const { isConnected } = useAccount();
@@ -19,12 +27,10 @@ export const PyusdPayment = () => {
   // Auto-submit to fishing pool after signature is obtained
   useEffect(() => {
     if (payment.signature && !payment.hash && !payment.isExecuting) {
-      // Submit to fishing pool for fishers to execute
       payment.submitToFishers().then(() => {
         console.log('✅ Payment submitted to fishing pool - fishers will execute it');
       }).catch((error) => {
         console.error('Failed to submit to fishing pool, executing directly:', error);
-        // Fallback to direct execution if fishing pool fails
         payment.executePayment();
       });
     }
@@ -33,7 +39,6 @@ export const PyusdPayment = () => {
   // Reset form after successful payment
   useEffect(() => {
     if (payment.isSuccess) {
-      // Add delay to ensure blockchain state has propagated before refetching
       const refetchTimer = setTimeout(() => {
         evvmBalance.refetch();
       }, 500);
@@ -42,7 +47,6 @@ export const PyusdPayment = () => {
       setAmount('');
       setPriorityFee('0');
 
-      // Auto-reset after 3 seconds
       const resetTimer = setTimeout(() => {
         payment.reset();
       }, 3000);
@@ -55,14 +59,11 @@ export const PyusdPayment = () => {
   }, [payment.isSuccess, payment, evvmBalance]);
 
   const handleSendPayment = async () => {
-    // Validation
     if (!recipient || !isAddress(recipient)) {
-      alert('Please enter a valid recipient address');
       return;
     }
 
     if (!amount || parseFloat(amount) <= 0) {
-      alert('Please enter a valid amount');
       return;
     }
 
@@ -70,380 +71,291 @@ export const PyusdPayment = () => {
     const balanceNum = parseFloat(evvmBalance.formatted);
 
     if (amountNum > balanceNum) {
-      alert('Insufficient PYUSD balance in EVVM');
       return;
     }
 
     try {
-      // Initiate payment (will sign and then auto-execute)
       await payment.initiatePayment(recipient, amount, priorityFee);
     } catch (error) {
-      // Error will be shown in the error alert below
       console.error('Payment error:', error);
     }
   };
 
   if (!isConnected) {
     return (
-      <div className="card bg-base-100 shadow-xl">
-        <div className="card-body">
-          <h2 className="card-title text-2xl">Send PYUSD Payment</h2>
-          <div className="alert alert-warning">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="stroke-current shrink-0 h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
-            <span>Please connect your wallet to send payments</span>
-          </div>
-        </div>
-      </div>
+      <Card className="bg-card/50 backdrop-blur border-primary/50">
+        <CardHeader>
+          <CardTitle className="font-mono">Send PYUSD Payment</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Alert className="border-amber-500/50 bg-amber-500/10">
+            <AlertCircle className="h-4 w-4 text-amber-500" />
+            <AlertDescription>
+              Please connect your wallet to send payments
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="card bg-base-100 shadow-xl">
-      <div className="card-body">
-        <h2 className="card-title text-2xl mb-4">Send PYUSD Payment</h2>
-
-        {/* Balance Display */}
-        <div className="stat bg-base-200 rounded-lg mb-4">
-          <div className="stat-title">Your EVVM Balance</div>
-          <div className="stat-value text-2xl">
+    <div className="space-y-6">
+      {/* Balance Display */}
+      <Card className="bg-gradient-to-br from-primary/20 to-primary/5 border-primary/50 pixel-border">
+        <CardHeader>
+          <CardTitle className="text-sm font-mono text-muted-foreground">Your EVVM Balance</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
             {evvmBalance.isLoading ? (
-              <span className="loading loading-spinner loading-sm"></span>
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm text-muted-foreground">Loading...</span>
+              </div>
             ) : (
-              `${parseFloat(evvmBalance.formatted).toFixed(2)} PYUSD`
+              <>
+                <p className="text-3xl font-bold font-mono">{parseFloat(evvmBalance.formatted).toFixed(2)}</p>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="font-mono text-xs bg-background/50">PYUSD</Badge>
+                  <span className="text-xs text-muted-foreground">Available to send</span>
+                </div>
+              </>
             )}
           </div>
-          <div className="stat-desc">Available to send</div>
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* Debug Info - Can remove after testing */}
-        <div className="alert alert-info">
-          <div className="text-xs space-y-1">
-            <div className="font-bold">Payment System Status:</div>
-            <div>✓ EVVM ID: {payment.evvmId?.toString()}</div>
-            <div>
-              {payment.isLoadingNonce ? (
-                <>⏳ Loading nonce...</>
-              ) : payment.currentNonce !== undefined ? (
-                <>✓ Nonce: {payment.currentNonce?.toString()}</>
-              ) : (
-                <>❌ Nonce not loaded</>
-              )}
-            </div>
-            <div>
-              {recipient && isAddress(recipient) ? (
-                <>✓ Valid recipient</>
-              ) : recipient ? (
-                <>❌ Invalid address</>
-              ) : (
-                <>⏹ No recipient</>
-              )}
-            </div>
-            <div>
-              {amount && parseFloat(amount) > 0 ? (
-                <>✓ Valid amount: {amount} PYUSD</>
-              ) : (
-                <>⏹ No amount</>
-              )}
+      {/* Payment Form */}
+      <Card className="bg-card/50 backdrop-blur border-primary/50">
+        <CardHeader>
+          <CardTitle className="font-mono">Send PYUSD Payment</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Loading EVVM Metadata */}
+          {(payment.isLoadingMetadata || payment.isLoadingNonce) && (
+            <Alert className="border-primary/30 bg-primary/5">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <AlertDescription className="text-xs">
+                Loading EVVM data...
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Token Selector (Fixed to PYUSD) */}
+          <div className="space-y-2">
+            <Label htmlFor="token">Token</Label>
+            <div className="flex items-center gap-2">
+              <Input id="token" value="PYUSD" disabled className="flex-1" />
+              <Badge variant="outline" className="font-mono text-xs">
+                6 decimals
+              </Badge>
             </div>
           </div>
-        </div>
 
-        {/* Loading EVVM Metadata */}
-        {(payment.isLoadingMetadata || payment.isLoadingNonce) && (
-          <div className="alert alert-info">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              className="stroke-current shrink-0 w-6 h-6"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              ></path>
-            </svg>
-            <span className="flex items-center gap-2">
-              <span className="loading loading-spinner loading-sm"></span>
-              Loading EVVM data...
-            </span>
-          </div>
-        )}
-
-        {/* Payment Form */}
-        <div className="space-y-4">
-          {/* Recipient Address */}
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Recipient Address</span>
-            </label>
-            <input
-              type="text"
-              placeholder="0x..."
-              className={`input input-bordered ${
-                recipient && !isAddress(recipient) ? 'input-error' : ''
-              }`}
+          {/* Recipient */}
+          <div className="space-y-2">
+            <Label htmlFor="recipient">Recipient</Label>
+            <Input
+              id="recipient"
+              placeholder="0x... or name.eth"
               value={recipient}
               onChange={(e) => setRecipient(e.target.value)}
+              className={`font-mono ${recipient && !isAddress(recipient) ? 'border-red-500' : ''}`}
             />
             {recipient && !isAddress(recipient) && (
-              <label className="label">
-                <span className="label-text-alt text-error">Invalid address format</span>
-              </label>
+              <p className="text-xs text-red-500">Invalid address format</p>
             )}
           </div>
 
           {/* Amount */}
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Amount (PYUSD)</span>
-              <span className="label-text-alt">
-                Max: {parseFloat(evvmBalance.formatted).toFixed(2)}
-              </span>
-            </label>
-            <div className="join">
-              <input
+          <div className="space-y-2">
+            <Label htmlFor="amount">Amount</Label>
+            <div className="flex gap-2">
+              <Input
+                id="amount"
                 type="number"
+                step="0.000001"
                 placeholder="0.00"
-                className="input input-bordered join-item flex-1"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                step="0.01"
-                min="0"
+                className="flex-1 font-mono"
               />
-              <button
-                className="btn join-item"
+              <Button
+                variant="outline"
                 onClick={() => setAmount(evvmBalance.formatted)}
               >
                 MAX
-              </button>
+              </Button>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Max: {parseFloat(evvmBalance.formatted).toFixed(2)} PYUSD
+            </p>
           </div>
 
           {/* Advanced Options */}
-          <div className="collapse collapse-arrow bg-base-200">
-            <input
-              type="checkbox"
-              checked={showAdvanced}
-              onChange={(e) => setShowAdvanced(e.target.checked)}
-            />
-            <div className="collapse-title font-medium">Advanced Options</div>
-            <div className="collapse-content">
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Priority Fee (PYUSD)</span>
-                  <span className="label-text-alt">Optional fisher reward</span>
-                </label>
-                <input
+          <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="w-full justify-between font-mono text-sm">
+                Advanced Options
+                <ChevronDown className={`h-4 w-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-4 pt-4">
+              <div className="space-y-2">
+                <Label htmlFor="priority-fee">Priority Fee (PYUSD)</Label>
+                <Input
+                  id="priority-fee"
                   type="number"
+                  step="0.000001"
                   placeholder="0.00"
-                  className="input input-bordered input-sm"
                   value={priorityFee}
                   onChange={(e) => setPriorityFee(e.target.value)}
-                  step="0.01"
-                  min="0"
+                  className="font-mono"
                 />
-                <label className="label">
-                  <span className="label-text-alt">
-                    Reward for stakers who execute your transaction
-                  </span>
-                </label>
+                <p className="text-xs text-muted-foreground">
+                  Optional reward for fishers who execute your transaction
+                </p>
               </div>
 
-              <div className="alert alert-info mt-2">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  className="stroke-current shrink-0 w-6 h-6"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  ></path>
-                </svg>
-                <span className="text-xs">
-                  Current Nonce: {payment.currentNonce?.toString() || 'Loading...'}
-                </span>
-              </div>
+              <Alert className="border-primary/30 bg-primary/5">
+                <Info className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  Current Nonce: <span className="font-mono">{payment.currentNonce?.toString() || 'Loading...'}</span>
+                </AlertDescription>
+              </Alert>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* Send Button */}
+          <div className="space-y-3">
+            <Button
+              onClick={handleSendPayment}
+              disabled={
+                !recipient ||
+                !isAddress(recipient) ||
+                !amount ||
+                parseFloat(amount) <= 0 ||
+                payment.isSigning ||
+                payment.isExecuting ||
+                payment.isConfirming ||
+                payment.isLoadingMetadata ||
+                payment.isLoadingNonce ||
+                !payment.evvmId ||
+                payment.currentNonce === undefined
+              }
+              className="w-full font-mono glitch-hover"
+            >
+              {payment.isLoadingMetadata || payment.isLoadingNonce ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Loading EVVM Data...
+                </>
+              ) : payment.isSigning ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sign Payment...
+                </>
+              ) : payment.isExecuting || payment.isConfirming ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {payment.isExecuting ? 'Sending Payment...' : 'Confirming...'}
+                </>
+              ) : (
+                'Send (Gasless)'
+              )}
+            </Button>
+
+            <div className="flex items-center justify-center gap-2">
+              <Badge variant="outline" className="font-mono text-xs">
+                Gasless
+              </Badge>
+              <Badge variant="outline" className="font-mono text-xs">
+                EVVM EIP-191
+              </Badge>
             </div>
           </div>
 
-          {/* Send Button */}
-          <button
-            className="btn btn-primary w-full"
-            onClick={handleSendPayment}
-            disabled={
-              !recipient ||
-              !isAddress(recipient) ||
-              !amount ||
-              parseFloat(amount) <= 0 ||
-              payment.isSigning ||
-              payment.isExecuting ||
-              payment.isConfirming ||
-              payment.isLoadingMetadata ||
-              payment.isLoadingNonce ||
-              !payment.evvmId ||
-              payment.currentNonce === undefined
-            }
-          >
-            {payment.isLoadingMetadata || payment.isLoadingNonce ? (
-              <>
-                <span className="loading loading-spinner loading-sm"></span>
-                Loading EVVM Data...
-              </>
-            ) : payment.isSigning ? (
-              <>
-                <span className="loading loading-spinner loading-sm"></span>
-                Sign Payment...
-              </>
-            ) : payment.isExecuting || payment.isConfirming ? (
-              <>
-                <span className="loading loading-spinner loading-sm"></span>
-                {payment.isExecuting ? 'Sending Payment...' : 'Confirming...'}
-              </>
-            ) : (
-              'Send Payment'
-            )}
-          </button>
-
           {/* Transaction Status */}
           {payment.signature && !payment.hash && (
-            <div className="alert alert-info">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="stroke-current shrink-0 h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <span>Signature obtained! Executing payment...</span>
-            </div>
+            <Alert className="border-primary/30 bg-primary/5">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <AlertDescription>
+                Signature obtained! Executing payment...
+              </AlertDescription>
+            </Alert>
           )}
 
           {payment.isSuccess && (
-            <div className="alert alert-success">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="stroke-current shrink-0 h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <div className="flex flex-col">
-                <span className="font-bold">Payment successful!</span>
+            <Alert className="border-green-500/50 bg-green-500/10">
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              <AlertDescription className="space-y-1">
+                <p className="font-bold">Payment successful!</p>
                 {payment.hash && (
                   <a
                     href={`https://sepolia.etherscan.io/tx/${payment.hash}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="link link-primary text-xs mt-1"
+                    className="text-xs text-primary hover:underline inline-flex items-center gap-1"
                   >
-                    View on Etherscan →
+                    View on Etherscan
+                    <ExternalLink className="h-3 w-3" />
                   </a>
                 )}
-              </div>
-            </div>
+              </AlertDescription>
+            </Alert>
           )}
 
           {(payment.signError || payment.executeError) && (
-            <div className="alert alert-error">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="stroke-current shrink-0 h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <div className="flex flex-col">
-                <span className="font-bold">Transaction failed</span>
-                <span className="text-xs">
+            <Alert className="border-red-500/50 bg-red-500/10">
+              <AlertCircle className="h-4 w-4 text-red-500" />
+              <AlertDescription className="space-y-1">
+                <p className="font-bold">Transaction failed</p>
+                <p className="text-xs">
                   {payment.signError?.message || payment.executeError?.message}
-                </span>
-              </div>
-            </div>
+                </p>
+              </AlertDescription>
+            </Alert>
           )}
 
           {/* How it Works */}
-          <div className="alert">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              className="stroke-info shrink-0 w-6 h-6"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              ></path>
-            </svg>
-            <div className="text-sm">
-              <p className="font-bold">How EVVM payments work:</p>
-              <ol className="list-decimal list-inside mt-2 space-y-1">
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription className="text-xs">
+              <p className="font-bold mb-2">How EVVM payments work:</p>
+              <ol className="list-decimal list-inside space-y-1">
                 <li>Sign payment message with your wallet (EIP-191)</li>
                 <li>Submit signed payment to EVVM contract</li>
                 <li>PYUSD transfers within EVVM instantly</li>
                 <li>No gas fees for the recipient!</li>
               </ol>
+            </AlertDescription>
+          </Alert>
+
+          {/* Contract Info */}
+          <div className="pt-6 border-t border-primary/20">
+            <p className="text-xs font-mono text-muted-foreground mb-3">Contract Info</p>
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">PYUSD Token:</span>
+                <a
+                  href={`https://sepolia.etherscan.io/address/${PYUSD_ADDRESS}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  {PYUSD_ADDRESS.slice(0, 6)}...{PYUSD_ADDRESS.slice(-4)}
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">EVVM ID:</span>
+                <span className="font-mono">{payment.evvmId?.toString() || 'Loading...'}</span>
+              </div>
             </div>
           </div>
-        </div>
-
-        {/* Contract Info */}
-        <div className="divider">Contract Info</div>
-        <div className="grid grid-cols-1 gap-2 text-xs">
-          <div>
-            <span className="font-bold">PYUSD Token:</span>{' '}
-            <a
-              href={`https://sepolia.etherscan.io/address/${PYUSD_ADDRESS}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="link link-primary font-mono"
-            >
-              {PYUSD_ADDRESS.slice(0, 6)}...{PYUSD_ADDRESS.slice(-4)}
-            </a>
-          </div>
-          <div>
-            <span className="font-bold">EVVM ID:</span>{' '}
-            <span className="font-mono">{payment.evvmId?.toString() || 'Loading...'}</span>
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
