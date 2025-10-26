@@ -10,6 +10,7 @@ import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useWallet } from "@/contexts/wallet-context"
 import { MateFaucet } from "@/components/payvvm/MateFaucet"
+import { MateFaucetService } from "@/components/payvvm/MateFaucetService"
 import { PyusdFaucet } from "@/components/payvvm/PyusdFaucet"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -36,12 +37,13 @@ export default function FaucetsPage() {
         </CardHeader>
       </Card>
 
-      <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+      <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
         <MateFaucet />
+        <MateFaucetService />
         <PyusdFaucet />
       </div>
 
-      <Card className="mt-8 max-w-4xl mx-auto bg-primary/5 border-primary/30">
+      <Card className="mt-8 max-w-6xl mx-auto bg-primary/5 border-primary/30">
         <CardContent className="p-6">
           <p className="text-sm text-muted-foreground text-pretty font-mono">
             <strong>Note:</strong> These are test faucets for development purposes only. Tokens have no real value and
