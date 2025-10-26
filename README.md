@@ -83,27 +83,28 @@ NEXT_PUBLIC_TREASURY_CONTRACT_ARB=0x7d4F9D95e84f6903c7247527e6BF1FA864F7c764
 
 ## Features
 
-### ✅ Implemented (v0 Generated UI)
+### ✅ Implemented (v0 Generated UI + Real Integrations)
 
 - **Landing Page** - Hero section with feature highlights and CTAs
-- **Wallet Dashboard** - PYUSD debit card UI, balance cards, activity feed
+- **Wallet Dashboard** - PYUSD debit card UI, balance cards, activity feed with real HyperSync data
 - **Send Payments** - Address/QR input, amount, gasless EIP-191 signing flow
 - **Invoice Creation** - Generate QR codes for payment requests
 - **Faucet Claims** - UI for MATE and PYUSD testnet faucets (gasless + gas variants)
 - **Withdraw Interface** - Withdraw PYUSD from EVVM to L1/L2
-- **Explorer (PayVVM Scan)** - Transaction history with filters and detail drawer
+- **Explorer (PayVVM Scan)** - ✅ Real HyperSync integration with transaction filtering
 - **Profile Page** - Wallet management, name registration, settings
 - **PWA Manifest** - Installable with offline support
 - **Theme Toggle** - Cyberpunk (retro terminal) ↔ Normie (minimal clean)
 - **Responsive Design** - Mobile-first, WCAG AA compliant
 - **QR Scanner** - Camera-based scanning for payment addresses
+- **HyperSync Integration** - ✅ Live transaction indexing for PayVVM, ETH, PYUSD transfers
 
 ### 🚧 Integration TODOs
 
-The UI is complete, but the following integrations need to be implemented in `services/evvm.ts`:
+The UI is complete, and **HyperSync integration is live**. Remaining integrations needed in `services/evvm.ts`:
 
 1. **Wallet Connection** - Replace mock wallet with Reown Kit/WalletConnect
-2. **EVVM Contract Calls** - Implement 8 service functions:
+2. **EVVM Contract Calls** - Implement 7 service functions:
    - `getEvvmBalances(address)` - Query internal EVVM balances
    - `getNativeBalances(address)` - Query L1/L2 native balances
    - `withdrawPyusdToSepolia(address, amount)` - Treasury withdrawal with signature
@@ -111,13 +112,12 @@ The UI is complete, but the following integrations need to be implemented in `se
    - `submitSignedPayment(eip191Msg, sig)` - Submit signed payment to fisher
    - `createInvoice(amount, memo?)` - Create invoice with QR data
    - `resolveName(nameOrAddress)` - EVVM NameService resolution
-   - `getExplorerFeed(params)` - HyperSync transaction query
 
-3. **Envio HyperSync** - Real-time blockchain indexing for transaction history
+3. ✅ ~~**Envio HyperSync**~~ - **COMPLETED** - Live transaction indexing via `utils/hypersync.ts`
 4. **Contract ABIs** - Add EVVM, Treasury, NameService, Staking ABIs
 5. **Signature Verification** - EIP-191/EIP-712 message signing flows
 
-All service functions currently return mock data (see `lib/mock.ts`).
+Most service functions currently return mock data (see `lib/mock.ts`), except HyperSync queries.
 
 ## Architecture
 
@@ -302,38 +302,52 @@ export async function getEvvmBalances(address: string) {
 }
 ```
 
-### Step 4: Envio HyperSync Integration
+### Step 4: Envio HyperSync Integration ✅ COMPLETED
 
-Replace mock transaction feeds with real HyperSync queries:
+**HyperSync is now live!** Transaction indexing is implemented in `utils/hypersync.ts`.
+
+**Implementation Details:**
 
 ```typescript
-// services/hypersync.ts
-import { HypersyncClient } from '@envio-dev/hypersync-client'
-
-const client = new HypersyncClient({
-  url: process.env.NEXT_PUBLIC_HYPERSYNC_URL,
-})
-
-export async function getExplorerFeed(params: ExplorerParams) {
+// utils/hypersync.ts
+export async function fetchPayVVMTransactions(
+  userAddress: string,
+  fromBlock: number,
+  toBlock: number,
+  limit: number = 50
+): Promise<PayVVMTransaction[]> {
   const query = {
-    fromBlock: 0,
-    logs: [{
-      address: [EVVM_CONTRACT_ADDRESS],
-      topics: [/* PaymentExecuted event signature */],
+    from_block: fromBlock,
+    to_block: toBlock,
+    transactions: [{
+      from: [GOLDEN_FISHER.toLowerCase()],
+      to: [EVVM_CONTRACT.toLowerCase()],
+      status: 1, // CRITICAL: Filter for successful transactions only
     }],
-    fieldSelection: {
-      log: ['block_number', 'transaction_hash', 'data', 'topics'],
-    },
+    // ... field selection
   }
 
-  const res = await client.get(query)
-  return parseEvvmEvents(res.data)
+  const response = await fetch('https://sepolia.hypersync.xyz/query', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(query),
+  })
+
+  // Decode pay() function parameters without events
+  // EVVM's pay() doesn't emit events - we decode from tx.input
 }
 ```
 
+**Key Features:**
+- ✅ Filters successful transactions at HyperSync query level (`status: 1`)
+- ✅ Decodes EVVM `pay()` function calls via manual ABI parsing
+- ✅ Identifies user involvement (send/receive) by comparing addresses
+- ✅ Works without events (EVVM's gasless design doesn't emit logs)
+- ✅ Fetches PayVVM, ETH, and PYUSD transfers in parallel
+
 **Resources:**
 - [Envio HyperSync Docs](https://docs.envio.dev/docs/HyperSync-LLM/hypersync-complete)
-- [HyperSync Client SDK](https://github.com/enviodev/hypersync-client-node)
+- [HyperSync HTTP API](https://docs.envio.dev/docs/HyperSync/hypersync-clients)
 
 ### Deployed Contracts
 
@@ -509,13 +523,20 @@ Each card shows:
 **Transaction history and EVVM state explorer**
 
 - **Search**: Address, name, or transaction ID
-- **Tabs**: Payments, Invoices, Dispersals, Accounts, Fishers
-- **Live Indicator**: "HyperSync Connected" status badge
+- **Tabs**: PayVVM Payments, ETH Transfers, PYUSD Transfers
+- **Live Data**: Real HyperSync integration (✅ implemented)
 - **Table**: Paginated transaction list with filters
-  - Columns: Type, Token, Amount, From/To, Time, Status
-  - Click row → opens SheetDrawer with full details
-  - Shows decoded payload, signatures, EVVM state
-- **Filters**: Token type, time range, amount range
+  - Columns: Type, Token, Amount, From/To, Time, Block
+  - Shows only successful transactions (failed txs filtered at query level)
+  - Decodes pay() function parameters via ABI parsing
+  - Identifies user involvement (send/receive)
+- **Filters**: Token type, time range, block range
+
+**Technical Implementation:**
+- Uses HyperSync HTTP API at `https://sepolia.hypersync.xyz/query`
+- Filters successful transactions using `status: 1` in TransactionSelection
+- Decodes EVVM `pay()` function calls without events (gasless design)
+- See `utils/hypersync.ts` for implementation details
 
 Powered by Envio HyperSync for real-time indexing.
 
