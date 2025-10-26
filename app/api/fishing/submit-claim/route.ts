@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { executePyusdFaucetClaim, isFisherEnabled } from '@/fishing/fisher-executor';
 
 /**
- * API endpoint for users to submit signed faucet claim messages
- * Fishers can poll this endpoint to discover pending faucet claims
+ * API endpoint for users to submit signed PYUSD faucet claim messages
+ * Executes claims immediately in serverless environment
  */
 
-// In-memory store for pending claims (in production, use Redis/Database)
-const pendingClaims: Array<{
+// In-memory store for claim history (in production, use Redis/Database)
+const claimHistory: Array<{
   id: string;
   timestamp: number;
   claimer: string;
@@ -14,27 +15,13 @@ const pendingClaims: Array<{
   signature: string;
   evvmId?: string;
   executed: boolean;
+  txHash?: string;
+  error?: string;
 }> = [];
-
-// Clean up executed claims older than 1 hour
-setInterval(() => {
-  const oneHourAgo = Date.now() - 60 * 60 * 1000;
-  const initialLength = pendingClaims.length;
-
-  for (let i = pendingClaims.length - 1; i >= 0; i--) {
-    if (pendingClaims[i].executed && pendingClaims[i].timestamp < oneHourAgo) {
-      pendingClaims.splice(i, 1);
-    }
-  }
-
-  if (pendingClaims.length !== initialLength) {
-    console.log(`🧹 Cleaned up ${initialLength - pendingClaims.length} old faucet claims`);
-  }
-}, 5 * 60 * 1000); // Every 5 minutes
 
 /**
  * POST /api/fishing/submit-claim
- * Submit a signed faucet claim message to the fishing pool
+ * Submit a signed PYUSD faucet claim message and execute it immediately
  */
 export async function POST(request: NextRequest) {
   try {
@@ -50,9 +37,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if fisher is enabled
+    if (!isFisherEnabled()) {
+      return NextResponse.json(
+        {
+          error: 'Fisher bot is not enabled. Please configure FISHER_PRIVATE_KEY and set FISHER_ENABLED=true in environment variables.',
+        },
+        { status: 503 }
+      );
+    }
+
     // Check if this claim already exists (by signature)
-    const existing = pendingClaims.find(claim => claim.signature === signature);
+    const existing = claimHistory.find(claim => claim.signature === signature);
     if (existing) {
+      if (existing.executed && existing.txHash) {
+        return NextResponse.json({
+          success: true,
+          id: existing.id,
+          txHash: existing.txHash,
+          message: 'Claim already executed',
+        });
+      }
       return NextResponse.json(
         { error: 'Claim already submitted', id: existing.id },
         { status: 409 }
@@ -62,7 +67,18 @@ export async function POST(request: NextRequest) {
     // Generate unique ID
     const id = `${claimer}-${nonce}-${Date.now()}`;
 
-    // Add to pending pool
+    console.log(`📝 New PYUSD faucet claim submitted: ${id}`);
+    console.log(`   Claimer: ${claimer}`);
+    console.log(`   Nonce: ${nonce}`);
+
+    // Execute the claim immediately
+    const result = await executePyusdFaucetClaim({
+      claimer,
+      nonce,
+      signature,
+    });
+
+    // Store in history
     const claim = {
       id,
       timestamp: Date.now(),
@@ -70,25 +86,35 @@ export async function POST(request: NextRequest) {
       nonce,
       signature,
       evvmId,
-      executed: false,
+      executed: result.success,
+      txHash: result.txHash,
+      error: result.error,
     };
 
-    pendingClaims.push(claim);
+    claimHistory.push(claim);
 
-    console.log(`📝 New faucet claim submitted to fishing pool: ${id}`);
-    console.log(`   Claimer: ${claimer}`);
-    console.log(`   Nonce: ${nonce}`);
-    console.log(`   Pending count: ${pendingClaims.filter(c => !c.executed).length}`);
-
-    return NextResponse.json({
-      success: true,
-      id,
-      message: 'Faucet claim submitted to fishing pool',
-      pendingCount: pendingClaims.filter(c => !c.executed).length,
-    });
+    if (result.success) {
+      console.log(`✅ PYUSD faucet claim executed successfully: ${result.txHash}`);
+      return NextResponse.json({
+        success: true,
+        id,
+        txHash: result.txHash,
+        gasUsed: result.gasUsed,
+        message: 'PYUSD faucet claim executed successfully',
+      });
+    } else {
+      console.error(`❌ PYUSD faucet claim execution failed: ${result.error}`);
+      return NextResponse.json(
+        {
+          error: result.error || 'Claim execution failed',
+          id,
+        },
+        { status: 500 }
+      );
+    }
 
   } catch (error) {
-    console.error('Error submitting faucet claim:', error);
+    console.error('Error submitting/executing PYUSD faucet claim:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

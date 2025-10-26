@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { executePayment, isFisherEnabled } from '@/fishing/fisher-executor';
 
 /**
  * API endpoint for users to submit signed payment messages
- * Fishers can poll this endpoint to discover pending transactions
+ * Executes transactions immediately in serverless environment
  */
 
-// In-memory store for pending transactions (in production, use Redis/Database)
-const pendingTransactions: Array<{
+// In-memory store for transaction history (in production, use Redis/Database)
+const transactionHistory: Array<{
   id: string;
   timestamp: number;
   from: string;
@@ -20,27 +21,13 @@ const pendingTransactions: Array<{
   priorityFlag: boolean;
   evvmId?: string;
   executed: boolean;
+  txHash?: string;
+  error?: string;
 }> = [];
-
-// Clean up executed transactions older than 1 hour
-setInterval(() => {
-  const oneHourAgo = Date.now() - 60 * 60 * 1000;
-  const initialLength = pendingTransactions.length;
-
-  for (let i = pendingTransactions.length - 1; i >= 0; i--) {
-    if (pendingTransactions[i].executed && pendingTransactions[i].timestamp < oneHourAgo) {
-      pendingTransactions.splice(i, 1);
-    }
-  }
-
-  if (pendingTransactions.length !== initialLength) {
-    console.log(`🧹 Cleaned up ${initialLength - pendingTransactions.length} old transactions`);
-  }
-}, 5 * 60 * 1000); // Every 5 minutes
 
 /**
  * POST /api/fishing/submit
- * Submit a signed payment message to the fishing pool
+ * Submit a signed payment message and execute it immediately
  */
 export async function POST(request: NextRequest) {
   try {
@@ -56,9 +43,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if fisher is enabled
+    if (!isFisherEnabled()) {
+      return NextResponse.json(
+        {
+          error: 'Fisher bot is not enabled. Please configure FISHER_PRIVATE_KEY and set FISHER_ENABLED=true in environment variables.',
+        },
+        { status: 503 }
+      );
+    }
+
     // Check if this transaction already exists (by signature)
-    const existing = pendingTransactions.find(tx => tx.signature === signature);
+    const existing = transactionHistory.find(tx => tx.signature === signature);
     if (existing) {
+      if (existing.executed && existing.txHash) {
+        return NextResponse.json({
+          success: true,
+          id: existing.id,
+          txHash: existing.txHash,
+          message: 'Transaction already executed',
+        });
+      }
       return NextResponse.json(
         { error: 'Transaction already submitted', id: existing.id },
         { status: 409 }
@@ -68,7 +73,26 @@ export async function POST(request: NextRequest) {
     // Generate unique ID
     const id = `${from}-${nonce}-${Date.now()}`;
 
-    // Add to pending pool
+    console.log(`📝 New payment transaction submitted: ${id}`);
+    console.log(`   From: ${from}`);
+    console.log(`   To: ${to}`);
+    console.log(`   Amount: ${amount}`);
+    console.log(`   Priority Fee: ${priorityFee || '0'}`);
+
+    // Execute the transaction immediately
+    const result = await executePayment({
+      from,
+      to,
+      token,
+      amount,
+      priorityFee: priorityFee || '0',
+      nonce,
+      signature,
+      executor: executor || '0x0000000000000000000000000000000000000000',
+      priorityFlag: priorityFlag !== undefined ? priorityFlag : false,
+    });
+
+    // Store in history
     const transaction = {
       id,
       timestamp: Date.now(),
@@ -82,27 +106,35 @@ export async function POST(request: NextRequest) {
       executor: executor || '0x0000000000000000000000000000000000000000',
       priorityFlag: priorityFlag !== undefined ? priorityFlag : false,
       evvmId,
-      executed: false,
+      executed: result.success,
+      txHash: result.txHash,
+      error: result.error,
     };
 
-    pendingTransactions.push(transaction);
+    transactionHistory.push(transaction);
 
-    console.log(`📝 New transaction submitted to fishing pool: ${id}`);
-    console.log(`   From: ${from}`);
-    console.log(`   To: ${to}`);
-    console.log(`   Amount: ${amount}`);
-    console.log(`   Priority Fee: ${priorityFee || '0'}`);
-    console.log(`   Pending count: ${pendingTransactions.filter(tx => !tx.executed).length}`);
-
-    return NextResponse.json({
-      success: true,
-      id,
-      message: 'Transaction submitted to fishing pool',
-      pendingCount: pendingTransactions.filter(tx => !tx.executed).length,
-    });
+    if (result.success) {
+      console.log(`✅ Transaction executed successfully: ${result.txHash}`);
+      return NextResponse.json({
+        success: true,
+        id,
+        txHash: result.txHash,
+        gasUsed: result.gasUsed,
+        message: 'Transaction executed successfully',
+      });
+    } else {
+      console.error(`❌ Transaction execution failed: ${result.error}`);
+      return NextResponse.json(
+        {
+          error: result.error || 'Transaction execution failed',
+          id,
+        },
+        { status: 500 }
+      );
+    }
 
   } catch (error) {
-    console.error('Error submitting transaction:', error);
+    console.error('Error submitting/executing transaction:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -23,10 +23,9 @@ The following environment variables are automatically configured from `vercel.js
 - Feature flags
 - Documentation links
 
-**Fisher Bot Settings:**
-- `FISHER_ENABLED` - Set to `false` by default
-- `FISHER_GAS_PRICE_MULTIPLIER` - Gas multiplier (1.2)
-- `FISHER_POLLING_INTERVAL` - Polling interval in ms (5000)
+**Fisher Bot Settings (Serverless Event-Driven):**
+- `FISHER_ENABLED` - Set to `true` (executes transactions immediately)
+- `FISHER_GAS_LIMIT` - Gas limit per transaction (500000)
 
 ### Manual Setup Required (Sensitive)
 

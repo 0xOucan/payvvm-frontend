@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { executeMateFaucetClaim, isFisherEnabled } from '@/fishing/fisher-executor';
 
 /**
  * API endpoint for users to submit signed MATE faucet claim messages
- * Fishers can poll this endpoint to discover pending MATE faucet claims
+ * Executes claims immediately in serverless environment
  */
 
-// In-memory store for pending MATE claims (in production, use Redis/Database)
-const pendingMateClaims: Array<{
+// In-memory store for MATE claim history (in production, use Redis/Database)
+const mateClaimHistory: Array<{
   id: string;
   timestamp: number;
   claimer: string;
@@ -14,27 +15,13 @@ const pendingMateClaims: Array<{
   signature: string;
   evvmId?: string;
   executed: boolean;
+  txHash?: string;
+  error?: string;
 }> = [];
-
-// Clean up executed MATE claims older than 1 hour
-setInterval(() => {
-  const oneHourAgo = Date.now() - 60 * 60 * 1000;
-  const initialLength = pendingMateClaims.length;
-
-  for (let i = pendingMateClaims.length - 1; i >= 0; i--) {
-    if (pendingMateClaims[i].executed && pendingMateClaims[i].timestamp < oneHourAgo) {
-      pendingMateClaims.splice(i, 1);
-    }
-  }
-
-  if (pendingMateClaims.length !== initialLength) {
-    console.log(`🧹 Cleaned up ${initialLength - pendingMateClaims.length} old MATE faucet claims`);
-  }
-}, 5 * 60 * 1000); // Every 5 minutes
 
 /**
  * POST /api/fishing/submit-mate-claim
- * Submit a signed MATE faucet claim message to the fishing pool
+ * Submit a signed MATE faucet claim message and execute it immediately
  */
 export async function POST(request: NextRequest) {
   try {
@@ -50,9 +37,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if fisher is enabled
+    if (!isFisherEnabled()) {
+      return NextResponse.json(
+        {
+          error: 'Fisher bot is not enabled. Please configure FISHER_PRIVATE_KEY and set FISHER_ENABLED=true in environment variables.',
+        },
+        { status: 503 }
+      );
+    }
+
     // Check if this MATE claim already exists (by signature)
-    const existing = pendingMateClaims.find(claim => claim.signature === signature);
+    const existing = mateClaimHistory.find(claim => claim.signature === signature);
     if (existing) {
+      if (existing.executed && existing.txHash) {
+        return NextResponse.json({
+          success: true,
+          id: existing.id,
+          txHash: existing.txHash,
+          message: 'MATE claim already executed',
+        });
+      }
       return NextResponse.json(
         { error: 'MATE claim already submitted', id: existing.id },
         { status: 409 }
@@ -62,7 +67,18 @@ export async function POST(request: NextRequest) {
     // Generate unique ID
     const id = `${claimer}-${nonce}-${Date.now()}`;
 
-    // Add to pending pool
+    console.log(`📝 New MATE faucet claim submitted: ${id}`);
+    console.log(`   Claimer: ${claimer}`);
+    console.log(`   Nonce: ${nonce}`);
+
+    // Execute the claim immediately
+    const result = await executeMateFaucetClaim({
+      claimer,
+      nonce,
+      signature,
+    });
+
+    // Store in history
     const claim = {
       id,
       timestamp: Date.now(),
@@ -70,25 +86,35 @@ export async function POST(request: NextRequest) {
       nonce,
       signature,
       evvmId,
-      executed: false,
+      executed: result.success,
+      txHash: result.txHash,
+      error: result.error,
     };
 
-    pendingMateClaims.push(claim);
+    mateClaimHistory.push(claim);
 
-    console.log(`📝 New MATE faucet claim submitted to fishing pool: ${id}`);
-    console.log(`   Claimer: ${claimer}`);
-    console.log(`   Nonce: ${nonce}`);
-    console.log(`   Pending count: ${pendingMateClaims.filter(c => !c.executed).length}`);
-
-    return NextResponse.json({
-      success: true,
-      id,
-      message: 'MATE faucet claim submitted to fishing pool',
-      pendingCount: pendingMateClaims.filter(c => !c.executed).length,
-    });
+    if (result.success) {
+      console.log(`✅ MATE faucet claim executed successfully: ${result.txHash}`);
+      return NextResponse.json({
+        success: true,
+        id,
+        txHash: result.txHash,
+        gasUsed: result.gasUsed,
+        message: 'MATE faucet claim executed successfully',
+      });
+    } else {
+      console.error(`❌ MATE faucet claim execution failed: ${result.error}`);
+      return NextResponse.json(
+        {
+          error: result.error || 'MATE claim execution failed',
+          id,
+        },
+        { status: 500 }
+      );
+    }
 
   } catch (error) {
-    console.error('Error submitting MATE faucet claim:', error);
+    console.error('Error submitting/executing MATE faucet claim:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

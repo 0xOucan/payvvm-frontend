@@ -24,8 +24,7 @@
     "NEXT_PUBLIC_FISHING_POOL_API": "/api/fishing",
     "NEXT_PUBLIC_DOCS_EVVM": "https://www.evvm.info/docs/EVVM/Introduction",
     "NEXT_PUBLIC_DOCS_HYPERSYNC": "https://docs.envio.dev/docs/HyperSync-LLM/hypersync-complete",
-    "FISHER_ENABLED": "false",
-    "FISHER_GAS_PRICE_MULTIPLIER": "1.2",
-    "FISHER_POLLING_INTERVAL": "5000"
+    "FISHER_ENABLED": "true",
+    "FISHER_GAS_LIMIT": "500000"
   }
 }
