@@ -18,14 +18,14 @@ export default function ExplorerPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <Card className="mb-8 bg-card/50 backdrop-blur">
+      <Card className="mb-8 bg-card/50 backdrop-blur border-primary/50">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="font-mono text-2xl">PayVVM Scan</CardTitle>
               <CardDescription>Explorer for EVVM-powered payments</CardDescription>
             </div>
-            <Badge variant="outline" className="gap-2 font-mono">
+            <Badge variant="outline" className="gap-2 font-mono border-primary/50">
               <Activity className="h-3 w-3 animate-pulse text-primary" />
               HyperSync Connected
             </Badge>

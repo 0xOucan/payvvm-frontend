@@ -29,7 +29,7 @@ export default function FaucetsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <Card className="mb-8 bg-card/50 backdrop-blur">
+      <Card className="mb-8 bg-card/50 backdrop-blur border-primary/50">
         <CardHeader>
           <CardTitle className="font-mono text-2xl">Test Faucets</CardTitle>
           <CardDescription>Claim test tokens for PayVVM development and testing</CardDescription>
@@ -41,9 +41,9 @@ export default function FaucetsPage() {
         <PyusdFaucet />
       </div>
 
-      <Card className="mt-8 max-w-4xl mx-auto bg-muted/50">
+      <Card className="mt-8 max-w-4xl mx-auto bg-primary/5 border-primary/30">
         <CardContent className="p-6">
-          <p className="text-sm text-muted-foreground text-pretty">
+          <p className="text-sm text-muted-foreground text-pretty font-mono">
             <strong>Note:</strong> These are test faucets for development purposes only. Tokens have no real value and
             are used for testing PayVVM functionality on Sepolia testnet.
           </p>

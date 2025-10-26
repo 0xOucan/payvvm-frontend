@@ -93,7 +93,7 @@ export default function InvoicePage() {
       </div>
 
       {!showQR ? (
-        <Card>
+        <Card className="bg-card/50 backdrop-blur border-primary/50">
           <CardHeader>
             <CardTitle className="font-mono">Create Invoice (PYUSD)</CardTitle>
             <CardDescription>Generate a QR code for customers to scan and pay gaslessly</CardDescription>
@@ -131,7 +131,7 @@ export default function InvoicePage() {
         </Card>
       ) : (
         <div className="space-y-6">
-          <Card>
+          <Card className="bg-card/50 backdrop-blur border-primary/50">
             <CardHeader>
               <CardTitle className="font-mono">Invoice QR Code</CardTitle>
               <CardDescription>Customer scans this QR to auto-fill the send form</CardDescription>
@@ -162,11 +162,11 @@ export default function InvoicePage() {
                 </div>
 
                 <div className="flex gap-2">
-                  <Button onClick={handleCopyLink} variant="outline" className="flex-1 gap-2 bg-transparent">
+                  <Button onClick={handleCopyLink} variant="outline" className="flex-1 gap-2 bg-transparent border-primary/50 hover:bg-primary/5">
                     {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                     {copied ? "Copied!" : "Copy Link"}
                   </Button>
-                  <Button onClick={handleReset} variant="outline" className="flex-1 bg-transparent">
+                  <Button onClick={handleReset} variant="outline" className="flex-1 bg-transparent border-primary/50 hover:bg-primary/5">
                     Create New
                   </Button>
                 </div>
@@ -174,9 +174,9 @@ export default function InvoicePage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-muted/50">
+          <Card className="bg-primary/5 border-primary/30">
             <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground text-pretty">
+              <p className="text-sm text-muted-foreground text-pretty font-mono">
                 <strong>Instructions:</strong> Customer scans QR to auto-fill the Send form with your address and
                 amount, then signs gaslessly with EVVM EIP-191.
               </p>

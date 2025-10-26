@@ -28,10 +28,12 @@ export default function SendPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-md">
-      <Card>
+      <Card className="bg-card/50 backdrop-blur border-primary/50">
         <CardHeader>
           <CardTitle className="font-mono">Send PYUSD (Gasless)</CardTitle>
-          <CardDescription>Sign with EIP-191, fishers execute the transaction</CardDescription>
+          <CardDescription className="text-muted-foreground">
+            Sign with EIP-191, fishers execute the transaction
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <PyusdPayment />
@@ -39,7 +41,7 @@ export default function SendPage() {
       </Card>
 
       <div className="mt-6 text-center">
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground font-mono">
           Gasless transactions are powered by EVVM. No ETH required for gas fees.
         </p>
       </div>

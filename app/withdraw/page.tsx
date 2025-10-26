@@ -40,7 +40,7 @@ export default function WithdrawPage() {
         </Button>
       </div>
 
-      <Card>
+      <Card className="bg-card/50 backdrop-blur border-primary/50">
         <CardHeader>
           <CardTitle className="font-mono">Treasury Management</CardTitle>
           <CardDescription>Deposit and withdraw PYUSD from PAYVVM</CardDescription>
