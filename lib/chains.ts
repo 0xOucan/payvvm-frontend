@@ -17,10 +17,19 @@ export const sepolia = defineChain({
   },
   rpcUrls: {
     default: {
-      http: ['https://rpc.sepolia.org'],
+      http: [
+        'https://ethereum-sepolia-rpc.publicnode.com',
+        'https://rpc2.sepolia.org',
+        'https://sepolia.gateway.tenderly.co',
+        'https://rpc.sepolia.org',
+      ],
     },
     public: {
-      http: ['https://rpc.sepolia.org'],
+      http: [
+        'https://ethereum-sepolia-rpc.publicnode.com',
+        'https://rpc2.sepolia.org',
+        'https://rpc.sepolia.org',
+      ],
     },
   },
   blockExplorers: {
@@ -42,10 +51,17 @@ export const arbitrumSepolia = defineChain({
   },
   rpcUrls: {
     default: {
-      http: ['https://sepolia-rollup.arbitrum.io/rpc'],
+      http: [
+        'https://arbitrum-sepolia.blockpi.network/v1/rpc/public',
+        'https://sepolia-rollup.arbitrum.io/rpc',
+        'https://arbitrum-sepolia-rpc.publicnode.com',
+      ],
     },
     public: {
-      http: ['https://sepolia-rollup.arbitrum.io/rpc'],
+      http: [
+        'https://arbitrum-sepolia.blockpi.network/v1/rpc/public',
+        'https://sepolia-rollup.arbitrum.io/rpc',
+      ],
     },
   },
   blockExplorers: {

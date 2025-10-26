@@ -4,7 +4,7 @@
  * Configures wallet connectors, chains, and transports for Web3 integration
  */
 
-import { createConfig, http } from 'wagmi'
+import { createConfig, http, fallback } from 'wagmi'
 import { walletConnect, coinbaseWallet, injected } from 'wagmi/connectors'
 import { sepolia, arbitrumSepolia } from './chains'
 
@@ -44,8 +44,12 @@ export const wagmiConfig = createConfig({
     }),
   ],
   transports: {
-    [sepolia.id]: http(),
-    [arbitrumSepolia.id]: http(),
+    [sepolia.id]: fallback(
+      sepolia.rpcUrls.default.http.map((url) => http(url))
+    ),
+    [arbitrumSepolia.id]: fallback(
+      arbitrumSepolia.rpcUrls.default.http.map((url) => http(url))
+    ),
   },
   ssr: true, // Enable SSR support for Next.js
 })

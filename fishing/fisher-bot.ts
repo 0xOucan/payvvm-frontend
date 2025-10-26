@@ -5,9 +5,9 @@
  * Monitors mempool for payment signatures and executes them
  */
 
-import { createPublicClient, createWalletClient, http } from 'viem';
+import { createPublicClient, createWalletClient, http, fallback } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { sepolia } from 'viem/chains';
+import { sepolia } from '../lib/chains';
 import * as dotenv from 'dotenv';
 import { validatePaymentSignature } from './signature-validator';
 import { isNonceValid } from './nonce-manager';
@@ -121,7 +121,7 @@ class FisherBot {
       throw new Error('FISHER_PRIVATE_KEY not configured in .env');
     }
 
-    this.rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || 'https://rpc.sepolia.org';
+    this.rpcUrl = sepolia.rpcUrls.default.http[0];
     this.wsUrl =
       process.env.FISHER_WS_URL ||
       this.rpcUrl.replace('https://', 'wss://').replace('http://', 'ws://');
@@ -130,16 +130,20 @@ class FisherBot {
     this.minPriorityFee = BigInt(process.env.FISHER_MIN_PRIORITY_FEE || '0');
     this.gasLimit = Number(process.env.FISHER_GAS_LIMIT || 500000);
 
-    // Create clients
+    // Create clients with fallback RPC configuration
+    const rpcTransport = fallback(
+      sepolia.rpcUrls.default.http.map((url) => http(url))
+    );
+
     this.publicClient = createPublicClient({
       chain: sepolia,
-      transport: http(this.rpcUrl),
+      transport: rpcTransport,
     });
 
     this.walletClient = createWalletClient({
       account: this.account,
       chain: sepolia,
-      transport: http(this.rpcUrl),
+      transport: rpcTransport,
     });
 
     // Initialize stats
