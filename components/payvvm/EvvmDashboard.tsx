@@ -1,7 +1,7 @@
 "use client";
 
 import { formatEther } from 'viem';
-import { useEvvmMetadata, useCurrentReward, useEvvmAdmin } from '~~/hooks/payvvm/useEvvmState';
+import { useEvvmMetadata, useCurrentReward, useEvvmAdmin } from '@/hooks/payvvm/useEvvmState';
 
 export const EvvmDashboard = () => {
   const { data: metadata, isLoading: metadataLoading, refetch: refetchMetadata } = useEvvmMetadata();

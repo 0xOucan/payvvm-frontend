@@ -7,6 +7,7 @@
  * - WagmiConfig for wallet connection
  * - QueryClientProvider for React Query
  * - RainbowKitProvider for wallet UI
+ * - WalletProvider for wallet context
  */
 
 import { ReactNode } from 'react'
@@ -14,6 +15,7 @@ import { WagmiProvider } from 'wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RainbowKitProvider, darkTheme, lightTheme } from '@rainbow-me/rainbowkit'
 import { wagmiConfig } from '@/lib/wagmi-config'
+import { WalletProvider } from '@/contexts/wallet-context'
 import { useTheme } from 'next-themes'
 import '@rainbow-me/rainbowkit/styles.css'
 
@@ -55,7 +57,9 @@ export function Web3Provider({ children }: Web3ProviderProps) {
           }
           showRecentTransactions={true}
         >
-          {children}
+          <WalletProvider>
+            {children}
+          </WalletProvider>
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
-import { useMateFaucetService } from '~~/hooks/payvvm/useMateFaucetService';
+import { useMateFaucetService } from '@/hooks/payvvm/useMateFaucetService';
 
 export const MateFaucetService = () => {
   const { isConnected } = useAccount();

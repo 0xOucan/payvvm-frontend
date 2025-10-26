@@ -2,8 +2,8 @@
 
 import { formatEther } from 'viem';
 import { useAccount } from 'wagmi';
-import { Address } from '~~/components/scaffold-eth';
-import { useUserAccount } from '~~/hooks/payvvm/useEvvmState';
+import { Address } from '@/components/ui/address';
+import { useUserAccount } from '@/hooks/payvvm/useEvvmState';
 
 export const AccountViewer = ({ address }: { address?: `0x${string}` }) => {
   const { address: connectedAddress } = useAccount();

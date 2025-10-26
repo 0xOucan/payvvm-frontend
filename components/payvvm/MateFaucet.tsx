@@ -2,8 +2,8 @@
 
 import { useEffect } from 'react';
 import { useAccount } from 'wagmi';
-import { useMateFaucet } from '~~/hooks/payvvm/useMateFaucet';
-import { useMateBalance } from '~~/hooks/payvvm/useMatePayment';
+import { useMateFaucet } from '@/hooks/payvvm/useMateFaucet';
+import { useMateBalance } from '@/hooks/payvvm/useMatePayment';
 
 const EVVM_ADDRESS = '0x9486f6C9d28ECdd95aba5bfa6188Bbc104d89C3e';
 

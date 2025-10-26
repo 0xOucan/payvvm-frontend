@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
-import { usePyusdFaucet } from '~~/hooks/payvvm/usePyusdFaucet';
+import { usePyusdFaucet } from '@/hooks/payvvm/usePyusdFaucet';
 
 export const PyusdFaucet = () => {
   const { isConnected } = useAccount();
