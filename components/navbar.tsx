@@ -17,6 +17,9 @@ const navItems = [
   { href: "/faucets", label: "Faucets" },
   { href: "/withdraw", label: "Withdraw" },
   { href: "/profile", label: "Profile" },
+  { href: "/subscriptions", label: "Subscriptions" },
+  { href: "/payroll", label: "Payroll" },
+  { href: "/lending", label: "Lending" },
 ]
 
 export function Navbar() {

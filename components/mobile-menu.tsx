@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
-import { Menu, LayoutDashboard, Send, Receipt, Search } from "lucide-react"
+import { Menu, LayoutDashboard, Send, Receipt, Search, Sparkles, Users, TrendingUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const mobileNavItems = [
@@ -13,6 +13,9 @@ const mobileNavItems = [
   { href: "/send", label: "Send", icon: Send },
   { href: "/invoice", label: "Invoice", icon: Receipt },
   { href: "/explorer", label: "Explorer", icon: Search },
+  { href: "/subscriptions", label: "Subscriptions", icon: Sparkles },
+  { href: "/payroll", label: "Payroll", icon: Users },
+  { href: "/lending", label: "Lending", icon: TrendingUp },
 ]
 
 export function MobileMenu() {

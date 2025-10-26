@@ -41,7 +41,7 @@ export function ConnectWalletButton() {
             {(() => {
               if (!connected) {
                 return (
-                  <Button onClick={openConnectModal} className="bg-cyber hover:bg-cyber/90 text-black font-bold">
+                  <Button onClick={openConnectModal} className="bg-primary hover:bg-primary/90 text-primary-foreground font-mono font-bold">
                     Connect Wallet
                   </Button>
                 )
