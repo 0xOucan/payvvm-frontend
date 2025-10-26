@@ -34,7 +34,7 @@ export function MobileMenu() {
           <SheetTitle className="font-mono text-primary">PayVVM Menu</SheetTitle>
         </SheetHeader>
         <div className="mt-8 flex flex-col gap-2">
-          {mobileNavItems.map((item) => {
+          {mobileNavItems.slice(0, 4).map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
 
@@ -54,6 +54,30 @@ export function MobileMenu() {
               </Link>
             )
           })}
+          {/* Coming soon features with muted styling */}
+          <div className="border-t border-border/50 mt-2 pt-2">
+            <p className="text-xs text-muted-foreground/60 px-4 py-2 font-mono">COMING SOON</p>
+            {mobileNavItems.slice(4).map((item) => {
+              const Icon = item.icon
+              const isActive = pathname === item.href
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
+                    "hover:bg-muted/50",
+                    isActive ? "bg-muted/50 text-muted-foreground/80 font-medium" : "text-muted-foreground/60"
+                  )}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span>{item.label}</span>
+                </Link>
+              )
+            })}
+          </div>
         </div>
       </SheetContent>
     </Sheet>

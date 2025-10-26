@@ -48,6 +48,19 @@ export function Navbar() {
                   {item.label}
                 </Link>
               ))}
+              {/* Coming soon features with muted styling */}
+              {navItems.slice(8).map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "px-3 py-2 text-sm font-medium transition-colors hover:text-muted-foreground/80",
+                    pathname === item.href ? "text-muted-foreground" : "text-muted-foreground/60",
+                  )}
+                >
+                  {item.label}
+                </Link>
+              ))}
             </div>
           </div>
 
