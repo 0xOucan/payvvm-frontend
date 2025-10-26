@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-build:
+    name: Lint and Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run linting
+        run: pnpm lint
+
+      - name: Build project
+        run: pnpm build
+        env:
+          # Provide minimal env vars for build
+          NEXT_PUBLIC_DOCS_EVVM: https://www.evvm.info/docs/EVVM/Introduction
+          NEXT_PUBLIC_DOCS_HYPERSYNC: https://docs.envio.dev/docs/HyperSync-LLM/hypersync-complete
+
+      - name: Check for TypeScript errors
+        run: npx tsc --noEmit
+        continue-on-error: true  # TypeScript checks currently disabled in next.config
+
+  accessibility:
+    name: Accessibility Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build project
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_DOCS_EVVM: https://www.evvm.info/docs/EVVM/Introduction
+          NEXT_PUBLIC_DOCS_HYPERSYNC: https://docs.envio.dev/docs/HyperSync-LLM/hypersync-complete
+
+      - name: Run accessibility audit
+        run: |
+          echo "Accessibility audit placeholder - integrate with pa11y or axe-core in future"
+        continue-on-error: true
