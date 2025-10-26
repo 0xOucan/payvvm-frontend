@@ -159,7 +159,6 @@ export default function PayrollPage() {
                         value={recipient.address}
                         onChange={(e) => updateRecipient(index, "address", e.target.value)}
                         className="font-mono text-sm"
-                        disabled
                       />
                       <Input
                         placeholder="Amount (PYUSD)"
@@ -168,13 +167,11 @@ export default function PayrollPage() {
                         className="font-mono"
                         type="number"
                         step="0.01"
-                        disabled
                       />
                       <Input
                         placeholder="Name (optional)"
                         value={recipient.name}
                         onChange={(e) => updateRecipient(index, "name", e.target.value)}
-                        disabled
                       />
                     </div>
                     <Button
@@ -190,7 +187,7 @@ export default function PayrollPage() {
                 ))}
 
                 <div className="flex gap-3 items-center pt-4 border-t">
-                  <Button variant="outline" onClick={addRecipient} className="font-mono" disabled>
+                  <Button variant="outline" onClick={addRecipient} className="font-mono">
                     <Plus className="h-4 w-4 mr-2" />
                     Add Recipient
                   </Button>
