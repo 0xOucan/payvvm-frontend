@@ -138,12 +138,7 @@ export async function fetchPayVVMTransactions(
         to: [EVVM_CONTRACT.toLowerCase()],
       },
     ],
-    logs: [
-      {
-        address: [EVVM_CONTRACT.toLowerCase()],
-        // Any log from EVVM contract indicates a successful transaction
-      },
-    ],
+    include_all_blocks: false,
     field_selection: {
       block: ['number', 'timestamp', 'hash'],
       transaction: [
@@ -155,15 +150,10 @@ export async function fetchPayVVMTransactions(
         'value',
         'input',
         'gas_used',
-      ],
-      log: [
-        'block_number',
-        'transaction_hash',
-        'log_index',
+        'status', // Transaction success status (1 = success, 0 = failed)
       ],
     },
     max_num_transactions: limit * 3, // Request more to filter client-side
-    max_num_logs: limit * 10, // Logs for successful transaction filtering
   };
 
   console.log(`[HyperSync] Querying from block ${fromBlock} to ${toBlock} for golden fisher ${GOLDEN_FISHER}`);
@@ -178,16 +168,7 @@ export async function fetchPayVVMTransactions(
   let failedTxCount = 0;
 
   // HyperSync returns data as an array - get first result
-  const result = response.data?.[0] || { transactions: [], blocks: [], logs: [] };
-
-  // Create a Set of successful transaction hashes (those that emitted logs)
-  const successfulTxHashes = new Set<string>();
-  if (result.logs) {
-    for (const log of result.logs) {
-      successfulTxHashes.add(log.transaction_hash.toLowerCase());
-    }
-  }
-  console.log(`[HyperSync] Found ${successfulTxHashes.size} successful transactions with logs`);
+  const result = response.data?.[0] || { transactions: [], blocks: [] };
 
   // Create a map of block numbers to blocks for timestamp lookup
   const blockMap = new Map();
@@ -198,13 +179,15 @@ export async function fetchPayVVMTransactions(
   }
 
   for (const tx of result.transactions || []) {
-    // FILTER OUT FAILED TRANSACTIONS: Skip if no logs were emitted
-    const txHash = tx.hash.toLowerCase();
-    if (!successfulTxHashes.has(txHash)) {
-      console.log(`[HyperSync] ❌ FAILED TX (no logs): ${tx.hash}`);
+    // FILTER OUT FAILED TRANSACTIONS: Skip if status !== 1 (success)
+    // Status: 1 = success, 0 = failed, undefined/null = unknown (treat as failed)
+    const txStatus = tx.status !== undefined ? Number(tx.status) : 0;
+    if (txStatus !== 1) {
+      console.log(`[HyperSync] ❌ FAILED TX (status=${txStatus}): ${tx.hash}`);
       failedTxCount++;
       continue;
     }
+    console.log(`[HyperSync] ✅ SUCCESS (status=1): ${tx.hash}`);
     successfulTxCount++;
 
     // Only process pay() function calls
