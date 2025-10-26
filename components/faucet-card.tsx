@@ -69,7 +69,7 @@ export function FaucetCard({ title, description, token, amount, gasless, cooldow
   const minutesRemaining = Math.ceil(timeRemaining / 60000)
 
   return (
-    <Card className="bg-card/50 backdrop-blur">
+    <Card className="bg-card/50 backdrop-blur border-primary/50">
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
@@ -77,7 +77,7 @@ export function FaucetCard({ title, description, token, amount, gasless, cooldow
             <CardTitle className="font-mono text-lg">{title}</CardTitle>
           </div>
           {gasless && (
-            <Badge variant="outline" className="font-mono text-xs">
+            <Badge variant="outline" className="font-mono text-xs border-primary/50">
               Gasless
             </Badge>
           )}
@@ -85,7 +85,7 @@ export function FaucetCard({ title, description, token, amount, gasless, cooldow
         <CardDescription className="text-pretty">{description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="p-3 rounded-lg bg-muted space-y-2">
+        <div className="p-3 rounded-lg bg-muted/50 border border-primary/20 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Token</span>
             <span className="font-mono font-semibold">{token}</span>
@@ -96,14 +96,14 @@ export function FaucetCard({ title, description, token, amount, gasless, cooldow
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Cooldown</span>
-            <span className="text-sm">{cooldownMinutes} min</span>
+            <span className="text-sm font-mono">{cooldownMinutes} min</span>
           </div>
         </div>
 
         {!canClaim && (
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/30">
+            <Clock className="h-4 w-4 text-primary" />
+            <span className="text-sm text-muted-foreground font-mono">
               Available in {minutesRemaining} minute{minutesRemaining !== 1 ? "s" : ""}
             </span>
           </div>
@@ -113,7 +113,7 @@ export function FaucetCard({ title, description, token, amount, gasless, cooldow
           {claiming ? "Claiming..." : canClaim ? "Claim" : "On Cooldown"}
         </Button>
 
-        {!gasless && <p className="text-xs text-muted-foreground text-center">Requires ETH for gas fees</p>}
+        {!gasless && <p className="text-xs text-muted-foreground text-center font-mono">Requires ETH for gas fees</p>}
       </CardContent>
     </Card>
   )
