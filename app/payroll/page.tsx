@@ -1,13 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
-import { Upload, Download, Users, DollarSign, FileText, Zap, Info, Plus, Trash2 } from "lucide-react"
+import { Upload, Download, Users, DollarSign, FileText, Zap, Info, Plus, Trash2, CheckCircle2, XCircle } from "lucide-react"
+import { useDispersePayment, DisperseRecipient } from "@/hooks/payvvm/useDispersePayment"
+import { useAccount } from "wagmi"
 
 const mockPayrollData = [
   { address: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb", amount: "1250.00", name: "Alice Johnson" },
@@ -24,11 +26,40 @@ interface Recipient {
 }
 
 export default function PayrollPage() {
+  const { address: connectedAddress } = useAccount()
+  const disperse = useDispersePayment()
+
   const [csvFile, setCsvFile] = useState<File | null>(null)
   const [showPreview, setShowPreview] = useState(false)
   const [recipients, setRecipients] = useState<Recipient[]>([
     { address: "", amount: "", name: "" },
   ])
+  const [submitting, setSubmitting] = useState(false)
+  const [txHash, setTxHash] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  // Auto-submit to fishers when signature is obtained
+  useEffect(() => {
+    if (disperse.signature && !submitting && !txHash) {
+      setSubmitting(true)
+      setError(null)
+
+      disperse.submitToFishers()
+        .then((data) => {
+          if (data?.txHash) {
+            setTxHash(data.txHash)
+            console.log('✅ dispersePay executed:', data.txHash)
+          }
+        })
+        .catch((err) => {
+          console.error('Error submitting to fishers:', err)
+          setError(err.message || 'Failed to submit transaction')
+        })
+        .finally(() => {
+          setSubmitting(false)
+        })
+    }
+  }, [disperse.signature, submitting, txHash])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -51,6 +82,52 @@ export default function PayrollPage() {
     const updated = [...recipients]
     updated[index][field] = value
     setRecipients(updated)
+  }
+
+  // Validate recipients before execution
+  const canExecute = connectedAddress && recipients.length > 0 && recipients.every(r =>
+    r.address.trim() !== "" &&
+    r.amount.trim() !== "" &&
+    parseFloat(r.amount) > 0
+  )
+
+  // Handle dispersePay execution
+  const handleExecutePayroll = async () => {
+    if (!connectedAddress) {
+      setError("Please connect your wallet first")
+      return
+    }
+
+    if (!canExecute) {
+      setError("Please fill in all recipient fields with valid amounts")
+      return
+    }
+
+    try {
+      setError(null)
+      setTxHash(null)
+
+      // Convert to DisperseRecipient format
+      const disperseRecipients: DisperseRecipient[] = recipients.map(r => ({
+        address: r.address,
+        amount: r.amount,
+        name: r.name || '',
+      }))
+
+      // Initiate signature
+      await disperse.initiateDisperse(disperseRecipients, "0")
+    } catch (err: any) {
+      console.error('Error initiating dispersePay:', err)
+      setError(err.message || 'Failed to initiate payment')
+    }
+  }
+
+  // Reset after successful transaction
+  const handleReset = () => {
+    setRecipients([{ address: "", amount: "", name: "" }])
+    setTxHash(null)
+    setError(null)
+    disperse.reset()
   }
 
   const totalAmount = mockPayrollData.reduce((sum, item) => sum + parseFloat(item.amount), 0).toFixed(2)
@@ -206,9 +283,64 @@ export default function PayrollPage() {
                   </AlertDescription>
                 </Alert>
 
-                <Button className="w-full font-mono" size="lg" disabled>
-                  Sign & Execute Payroll
-                </Button>
+                {/* Error Alert */}
+                {error && (
+                  <Alert className="border-red-500/30 bg-red-500/5">
+                    <XCircle className="h-4 w-4 text-red-500" />
+                    <AlertDescription className="text-red-500">{error}</AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Success Alert */}
+                {txHash && (
+                  <Alert className="border-green-500/30 bg-green-500/5">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <AlertDescription className="text-green-500">
+                      <strong>Payroll executed successfully!</strong>
+                      <br />
+                      <a
+                        href={`https://sepolia.etherscan.io/tx/${txHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline font-mono text-xs"
+                      >
+                        View transaction: {txHash.slice(0, 10)}...{txHash.slice(-8)}
+                      </a>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Loading state during metadata fetch */}
+                {disperse.isLoadingMetadata && (
+                  <Alert className="border-amber-500/30 bg-amber-500/5">
+                    <Info className="h-4 w-4 text-amber-500" />
+                    <AlertDescription className="text-amber-500">
+                      Loading EVVM ID and nonce...
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="flex gap-3">
+                  <Button
+                    className="flex-1 font-mono"
+                    size="lg"
+                    onClick={handleExecutePayroll}
+                    disabled={!canExecute || disperse.isSigning || submitting || !!txHash || disperse.isLoadingMetadata}
+                  >
+                    {disperse.isSigning
+                      ? "📝 Sign Message..."
+                      : submitting
+                      ? "⏳ Submitting to Fishers..."
+                      : txHash
+                      ? "✅ Payroll Executed"
+                      : "Sign & Execute Payroll"}
+                  </Button>
+                  {txHash && (
+                    <Button variant="outline" size="lg" onClick={handleReset} className="font-mono">
+                      New Payroll
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

@@ -34,6 +34,27 @@ const EVVM_ABI = [
     ],
     outputs: [],
   },
+  {
+    name: 'dispersePay',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'from', type: 'address' },
+      { name: 'toData', type: 'tuple[]', components: [
+        { name: 'amount', type: 'uint256' },
+        { name: 'to_address', type: 'address' },
+        { name: 'to_identity', type: 'string' },
+      ]},
+      { name: 'token', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+      { name: 'priorityFee', type: 'uint256' },
+      { name: 'nonce', type: 'uint256' },
+      { name: 'priorityFlag', type: 'bool' },
+      { name: 'executor', type: 'address' },
+      { name: 'signature', type: 'bytes' },
+    ],
+    outputs: [],
+  },
 ] as const;
 
 // PYUSD Faucet ABI
@@ -305,6 +326,92 @@ export async function executeMateFaucetClaim(claim: {
     }
   } catch (error: any) {
     console.error(`❌ Error executing MATE faucet claim:`, error);
+    return {
+      success: false,
+      error: error.message || 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Execute a dispersePay transaction (payroll distribution) immediately
+ */
+export async function executeDispersePay(tx: {
+  from: string;
+  recipients: Array<{
+    amount: string;
+    to_address: string;
+    to_identity: string;
+  }>;
+  token: string;
+  amount: string;
+  priorityFee: string;
+  nonce: string;
+  signature: string;
+  executor: string;
+  priorityFlag: boolean;
+}): Promise<ExecutionResult> {
+  try {
+    const { publicClient, walletClient } = getFisherClients();
+    const gasLimit = BigInt(process.env.FISHER_GAS_LIMIT || 500000);
+
+    console.log('💸 Executing dispersePay transaction...');
+    console.log(`   From: ${tx.from}`);
+    console.log(`   Recipients: ${tx.recipients.length}`);
+    console.log(`   Total Amount: ${tx.amount}`);
+    console.log(`   Priority Fee: ${tx.priorityFee}`);
+
+    // Convert recipients to proper format
+    const recipientsData = tx.recipients.map(r => ({
+      amount: BigInt(r.amount),
+      to_address: r.to_address as `0x${string}`,
+      to_identity: r.to_identity || '',
+    }));
+
+    // Execute the dispersePay
+    const hash = await walletClient.writeContract({
+      address: EVVM_ADDRESS,
+      abi: EVVM_ABI,
+      functionName: 'dispersePay',
+      args: [
+        tx.from as `0x${string}`,
+        recipientsData,
+        tx.token as `0x${string}`,
+        BigInt(tx.amount),
+        BigInt(tx.priorityFee),
+        BigInt(tx.nonce),
+        tx.priorityFlag !== undefined ? tx.priorityFlag : false,
+        (tx.executor || '0x0000000000000000000000000000000000000000') as `0x${string}`,
+        tx.signature as `0x${string}`,
+      ],
+      gas: gasLimit,
+    });
+
+    console.log(`⏳ dispersePay submitted: ${hash}`);
+    console.log(`   Waiting for confirmation...`);
+
+    // Wait for transaction confirmation
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+    if (receipt.status === 'success') {
+      console.log(`✅ dispersePay executed successfully!`);
+      console.log(`   Gas used: ${receipt.gasUsed}`);
+      console.log(`   Block: ${receipt.blockNumber}`);
+
+      return {
+        success: true,
+        txHash: hash,
+        gasUsed: receipt.gasUsed.toString(),
+      };
+    } else {
+      console.log(`❌ dispersePay failed`);
+      return {
+        success: false,
+        error: 'Transaction reverted',
+      };
+    }
+  } catch (error: any) {
+    console.error(`❌ Error executing dispersePay:`, error);
     return {
       success: false,
       error: error.message || 'Unknown error',
