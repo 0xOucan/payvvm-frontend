@@ -14,10 +14,16 @@ import { Loader2, CheckCircle2, AlertCircle, ExternalLink, Info, ChevronDown } f
 import { useEvvmPayment } from '@/hooks/payvvm/useEvvmPayment';
 import { usePyusdEvvmBalance, PYUSD_ADDRESS } from '@/hooks/payvvm/usePyusdTreasury';
 
-export const PyusdPayment = () => {
+interface PyusdPaymentProps {
+  initialRecipient?: string;
+  initialAmount?: string;
+  initialMemo?: string;
+}
+
+export const PyusdPayment = ({ initialRecipient, initialAmount, initialMemo }: PyusdPaymentProps = {}) => {
   const { isConnected } = useAccount();
-  const [recipient, setRecipient] = useState('');
-  const [amount, setAmount] = useState('');
+  const [recipient, setRecipient] = useState(initialRecipient || '');
+  const [amount, setAmount] = useState(initialAmount || '');
   const [priorityFee, setPriorityFee] = useState('0');
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -26,6 +32,12 @@ export const PyusdPayment = () => {
 
   const evvmBalance = usePyusdEvvmBalance();
   const payment = useEvvmPayment();
+
+  // Update form values when initial values change (from QR scan or URL params)
+  useEffect(() => {
+    if (initialRecipient) setRecipient(initialRecipient);
+    if (initialAmount) setAmount(initialAmount);
+  }, [initialRecipient, initialAmount]);
 
   // Auto-submit to fishing pool after signature is obtained
   useEffect(() => {
