@@ -56,6 +56,11 @@ export function Web3Provider({ children }: Web3ProviderProps) {
                 })
           }
           showRecentTransactions={true}
+          modalSize="compact"
+          appInfo={{
+            appName: 'PayVVM',
+            learnMoreUrl: 'https://www.evvm.info/docs/EVVM/Introduction',
+          }}
         >
           <WalletProvider>
             {children}
