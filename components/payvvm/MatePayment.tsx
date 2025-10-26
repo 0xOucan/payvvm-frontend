@@ -24,9 +24,8 @@ export const MatePayment = () => {
       payment.submitToFishers().then(() => {
         console.log('✅ MATE payment submitted to fishing pool - fishers will execute it');
       }).catch((error) => {
-        console.error('Failed to submit MATE payment to fishing pool, executing directly:', error);
-        // Fallback to direct execution if fishing pool fails
-        payment.executePayment();
+        console.error('❌ Failed to submit MATE payment to fishing pool:', error);
+        // Do NOT execute directly - fisher bot should handle this
       });
     }
   }, [payment]);

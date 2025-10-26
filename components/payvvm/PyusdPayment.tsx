@@ -30,8 +30,8 @@ export const PyusdPayment = () => {
       payment.submitToFishers().then(() => {
         console.log('✅ Payment submitted to fishing pool - fishers will execute it');
       }).catch((error) => {
-        console.error('Failed to submit to fishing pool, executing directly:', error);
-        payment.executePayment();
+        console.error('❌ Failed to submit to fishing pool:', error);
+        // Do NOT execute directly - fisher bot should handle this
       });
     }
   }, [payment]);
@@ -280,8 +280,9 @@ export const PyusdPayment = () => {
           {payment.signature && !payment.hash && (
             <Alert className="border-primary/30 bg-primary/5">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <AlertDescription>
-                Signature obtained! Executing payment...
+              <AlertDescription className="space-y-1">
+                <p className="font-bold">Signature submitted to fishing pool!</p>
+                <p className="text-xs">Waiting for fisher bot to execute transaction...</p>
               </AlertDescription>
             </Alert>
           )}
@@ -322,12 +323,13 @@ export const PyusdPayment = () => {
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription className="text-xs">
-              <p className="font-bold mb-2">How EVVM payments work:</p>
+              <p className="font-bold mb-2">How gasless EVVM payments work:</p>
               <ol className="list-decimal list-inside space-y-1">
                 <li>Sign payment message with your wallet (EIP-191)</li>
-                <li>Submit signed payment to EVVM contract</li>
+                <li>Signature submitted to fishing pool API</li>
+                <li>Fisher bot picks up and executes on-chain (pays gas)</li>
                 <li>PYUSD transfers within EVVM instantly</li>
-                <li>No gas fees for the recipient!</li>
+                <li>You pay ZERO gas fees!</li>
               </ol>
             </AlertDescription>
           </Alert>
