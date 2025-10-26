@@ -4,7 +4,7 @@
  */
 
 import { useAccount, useSignMessage, useReadContract } from 'wagmi';
-import { parseUnits, zeroAddress, keccak256, toBytes } from 'viem';
+import { parseUnits, zeroAddress, keccak256, toBytes, encodeAbiParameters } from 'viem';
 import { useState } from 'react';
 import { useUserAccount, useEvvmId } from './useEvvmState';
 
@@ -62,14 +62,31 @@ export function constructDispersePayMessage(
   priorityFlag: boolean,
   executor: string
 ): string {
-  // Calculate hash of recipient data (keccak256 for consistency with EVM)
-  const recipientsJson = JSON.stringify(recipients.map(r => ({
-    amount: r.amount,
-    to_address: r.to_address.toLowerCase(),
+  // Calculate hash of recipient data using ABI encoding (same as Solidity's keccak256(abi.encode(toData)))
+  // Each recipient is a tuple of (uint256 amount, address to_address, string to_identity)
+  const recipientTuples = recipients.map(r => ({
+    amount: BigInt(r.amount),
+    to_address: r.to_address as `0x${string}`,
     to_identity: r.to_identity || '',
-  })));
+  }));
 
-  const hashList = keccak256(toBytes(recipientsJson));
+  // Encode the array of tuples using ABI encoding
+  const encodedRecipients = encodeAbiParameters(
+    [
+      {
+        type: 'tuple[]',
+        components: [
+          { name: 'amount', type: 'uint256' },
+          { name: 'to_address', type: 'address' },
+          { name: 'to_identity', type: 'string' },
+        ],
+      },
+    ],
+    [recipientTuples]
+  );
+
+  // Hash the ABI-encoded data
+  const hashList = keccak256(encodedRecipients);
 
   // Convert addresses to lowercase with 0x prefix
   const formattedToken = token.toLowerCase();
@@ -79,7 +96,8 @@ export function constructDispersePayMessage(
   const message = `${evvmId},dispersePay,${hashList},${formattedToken},${totalAmount},${priorityFee},${nonce},${formattedPriorityFlag},${formattedExecutor}`;
 
   console.log('Constructed dispersePay message:', message);
-  console.log('Recipients hash:', hashList);
+  console.log('Recipients hash (ABI-encoded):', hashList);
+  console.log('Encoded recipients:', encodedRecipients);
   return message;
 }
 
