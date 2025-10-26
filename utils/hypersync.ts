@@ -119,6 +119,7 @@ async function queryHyperSync(query: any): Promise<any> {
 
 /**
  * Fetch PayVVM transactions (pay() function calls from golden fisher)
+ * IMPORTANT: Only returns SUCCESSFUL transactions (filters out reverted transactions)
  */
 export async function fetchPayVVMTransactions(
   userAddress: string,
@@ -137,6 +138,12 @@ export async function fetchPayVVMTransactions(
         to: [EVVM_CONTRACT.toLowerCase()],
       },
     ],
+    logs: [
+      {
+        address: [EVVM_CONTRACT.toLowerCase()],
+        // Any log from EVVM contract indicates a successful transaction
+      },
+    ],
     field_selection: {
       block: ['number', 'timestamp', 'hash'],
       transaction: [
@@ -149,8 +156,14 @@ export async function fetchPayVVMTransactions(
         'input',
         'gas_used',
       ],
+      log: [
+        'block_number',
+        'transaction_hash',
+        'log_index',
+      ],
     },
-    max_num_transactions: limit * 2, // Request more to filter client-side
+    max_num_transactions: limit * 3, // Request more to filter client-side
+    max_num_logs: limit * 10, // Logs for successful transaction filtering
   };
 
   console.log(`[HyperSync] Querying from block ${fromBlock} to ${toBlock} for golden fisher ${GOLDEN_FISHER}`);
@@ -161,9 +174,20 @@ export async function fetchPayVVMTransactions(
   let payFunctionCount = 0;
   let decodedCount = 0;
   let matchedUserCount = 0;
+  let successfulTxCount = 0;
+  let failedTxCount = 0;
 
   // HyperSync returns data as an array - get first result
-  const result = response.data?.[0] || { transactions: [], blocks: [] };
+  const result = response.data?.[0] || { transactions: [], blocks: [], logs: [] };
+
+  // Create a Set of successful transaction hashes (those that emitted logs)
+  const successfulTxHashes = new Set<string>();
+  if (result.logs) {
+    for (const log of result.logs) {
+      successfulTxHashes.add(log.transaction_hash.toLowerCase());
+    }
+  }
+  console.log(`[HyperSync] Found ${successfulTxHashes.size} successful transactions with logs`);
 
   // Create a map of block numbers to blocks for timestamp lookup
   const blockMap = new Map();
@@ -174,6 +198,15 @@ export async function fetchPayVVMTransactions(
   }
 
   for (const tx of result.transactions || []) {
+    // FILTER OUT FAILED TRANSACTIONS: Skip if no logs were emitted
+    const txHash = tx.hash.toLowerCase();
+    if (!successfulTxHashes.has(txHash)) {
+      console.log(`[HyperSync] ❌ FAILED TX (no logs): ${tx.hash}`);
+      failedTxCount++;
+      continue;
+    }
+    successfulTxCount++;
+
     // Only process pay() function calls
     if (!tx.input || !tx.input.startsWith(PAY_FUNCTION_SELECTOR)) {
       console.log(`[HyperSync] Skipping non-pay() tx: ${tx.hash}`);
@@ -188,7 +221,7 @@ export async function fetchPayVVMTransactions(
     }
     decodedCount++;
 
-    console.log(`[HyperSync] Decoded tx ${tx.hash}: from=${decoded.from}, to=${decoded.to}, user=${userAddr}`);
+    console.log(`[HyperSync] ✅ SUCCESS: ${tx.hash}: from=${decoded.from}, to=${decoded.to}, user=${userAddr}`);
 
     // Only include transactions where user is sender or recipient
     if (decoded.from !== userAddr && decoded.to !== userAddr) {
@@ -216,7 +249,7 @@ export async function fetchPayVVMTransactions(
     if (transactions.length >= limit) break;
   }
 
-  console.log(`[HyperSync] Stats: pay()=${payFunctionCount}, decoded=${decodedCount}, matched=${matchedUserCount}, final=${transactions.length}`);
+  console.log(`[HyperSync] Stats: total=${result.transactions?.length || 0}, successful=${successfulTxCount}, failed=${failedTxCount}, pay()=${payFunctionCount}, decoded=${decodedCount}, matched=${matchedUserCount}, final=${transactions.length}`);
   return transactions;
 }
 
