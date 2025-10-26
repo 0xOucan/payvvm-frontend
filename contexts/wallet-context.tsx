@@ -1,55 +1,51 @@
-"use client"
+'use client'
 
-import type React from "react"
+/**
+ * Wallet Context for PayVVM Frontend
+ *
+ * Provides wallet connection state and utilities using Wagmi hooks.
+ * This replaces the previous mock implementation with real Web3 integration.
+ */
 
-import { createContext, useContext, useState, useEffect } from "react"
+import { createContext, useContext, type ReactNode } from 'react'
+import { useAccount, useDisconnect, useBalance } from 'wagmi'
+import type { Address } from 'viem'
 
 interface WalletContextType {
-  address: string | null
   isConnected: boolean
-  connect: () => Promise<void>
+  address: Address | undefined
   disconnect: () => void
+  balance: bigint | undefined
+  isLoading: boolean
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined)
 
-export function WalletProvider({ children }: { children: React.ReactNode }) {
-  const [address, setAddress] = useState<string | null>(null)
-  const [isConnected, setIsConnected] = useState(false)
+export function WalletProvider({ children }: { children: ReactNode }) {
+  // Get wallet connection state from Wagmi
+  const { address, isConnected } = useAccount()
+  const { disconnect } = useDisconnect()
 
-  useEffect(() => {
-    // Check for stored connection
-    const stored = localStorage.getItem("payvvm-wallet-address")
-    if (stored) {
-      setAddress(stored)
-      setIsConnected(true)
-    }
-  }, [])
+  // Get native ETH balance
+  const { data: balanceData, isLoading } = useBalance({
+    address,
+  })
 
-  const connect = async () => {
-    // TODO: Implement real WalletConnect / Reown Kit integration
-    // For now, use mock address
-    const mockAddress = "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
-    setAddress(mockAddress)
-    setIsConnected(true)
-    localStorage.setItem("payvvm-wallet-address", mockAddress)
+  const value: WalletContextType = {
+    isConnected,
+    address,
+    disconnect,
+    balance: balanceData?.value,
+    isLoading,
   }
 
-  const disconnect = () => {
-    setAddress(null)
-    setIsConnected(false)
-    localStorage.removeItem("payvvm-wallet-address")
-  }
-
-  return (
-    <WalletContext.Provider value={{ address, isConnected, connect, disconnect }}>{children}</WalletContext.Provider>
-  )
+  return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>
 }
 
 export function useWallet() {
   const context = useContext(WalletContext)
-  if (!context) {
-    throw new Error("useWallet must be used within WalletProvider")
+  if (context === undefined) {
+    throw new Error('useWallet must be used within a WalletProvider')
   }
   return context
 }

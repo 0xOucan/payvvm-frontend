@@ -4,7 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { ThemeProvider } from "@/contexts/theme-context"
-import { WalletProvider } from "@/contexts/wallet-context"
+import { Web3Provider } from "@/providers/web3-provider"
 import { Navbar } from "@/components/navbar"
 import { Toaster } from "@/components/ui/toaster"
 
@@ -28,13 +28,13 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`font-sans antialiased`}>
         <ThemeProvider>
-          <WalletProvider>
+          <Web3Provider>
             <div className="scanlines min-h-screen">
               <Navbar />
               <main>{children}</main>
               <Toaster />
             </div>
-          </WalletProvider>
+          </Web3Provider>
         </ThemeProvider>
         <Analytics />
       </body>
