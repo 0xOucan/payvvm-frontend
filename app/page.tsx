@@ -15,7 +15,9 @@ export default function HomePage() {
           </h1>
 
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto text-balance">
-            Smart-contract native. No new infra. EVVM inside. Data by Envio HyperSync.
+            Smart-contract native. No new infra. EVVM inside.
+            <br />
+            Data powered by Envio HyperSync.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
@@ -44,9 +46,12 @@ export default function HomePage() {
               <CardTitle className="font-mono">Gasless by EVVM</CardTitle>
             </CardHeader>
             <CardContent>
-              <CardDescription className="text-pretty">
-                Sign EIP-191 messages, fishers execute. PayVVM uses EVVM to make PYUSD payments feel instant—no gas fees
-                for users.
+              <CardDescription className="text-pretty leading-relaxed">
+                <strong>Sign → Execute → Confirm.</strong>
+                <br />
+                Users sign EIP-191 messages, and Fishers handle on-chain execution.
+                <br />
+                No gas, no friction — just instant PYUSD movement.
               </CardDescription>
             </CardContent>
           </Card>
@@ -56,11 +61,15 @@ export default function HomePage() {
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
                 <DollarSign className="h-6 w-6 text-primary" />
               </div>
-              <CardTitle className="font-mono">PYUSD-native</CardTitle>
+              <CardTitle className="font-mono">PYUSD-Native</CardTitle>
             </CardHeader>
             <CardContent>
-              <CardDescription className="text-pretty">
-                Stable USD experience. Built for payments, payroll, and subscriptions with PYUSD at the core.
+              <CardDescription className="text-pretty leading-relaxed">
+                <strong>Stable USD experience.</strong>
+                <br />
+                Built for payments today, with payroll and subscriptions coming soon.
+                <br />
+                Every transaction uses PYUSD at its core.
               </CardDescription>
             </CardContent>
           </Card>
@@ -70,11 +79,15 @@ export default function HomePage() {
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
                 <Activity className="h-6 w-6 text-primary" />
               </div>
-              <CardTitle className="font-mono">HyperSync live</CardTitle>
+              <CardTitle className="font-mono">HyperSync Live</CardTitle>
             </CardHeader>
             <CardContent>
-              <CardDescription className="text-pretty">
-                Real-time stats and history powered by Envio HyperSync. Lightning-fast blockchain data indexing.
+              <CardDescription className="text-pretty leading-relaxed">
+                <strong>Real-time, high-speed blockchain data.</strong>
+                <br />
+                Stats and history are streamed via Envio HyperSync,
+                <br />
+                offering 2000× faster reads and smooth analytics.
               </CardDescription>
             </CardContent>
           </Card>

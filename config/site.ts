@@ -1,7 +1,7 @@
 export const siteConfig = {
   name: "PayVVM",
   title: "PayVVM - Gasless PYUSD Wallet",
-  description: "Gasless PYUSD payments powered by EVVM. Smart-contract native. No new infra. Data by Envio HyperSync.",
+  description: "Gasless PYUSD payments powered by EVVM. Smart-contract native. No new infra. Data powered by Envio HyperSync.",
   links: {
     docs: {
       evvm: process.env.NEXT_PUBLIC_DOCS_EVVM || "https://www.evvm.info/docs/EVVM/Introduction",
@@ -11,5 +11,5 @@ export const siteConfig = {
     github: "https://github.com/payvvm",
     twitter: "https://twitter.com/payvvm",
   },
-  disclaimer: "Runs on EVVM test networks for demo. Use at your own risk.",
+  disclaimer: "⚠️ Runs on EVVM Test Networks for demonstration. Use at your own risk.",
 }
