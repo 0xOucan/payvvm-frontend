@@ -36,6 +36,7 @@ interface CachedData {
 
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const CACHE_KEY_PREFIX = 'payvvm_tx_cache_';
+const CACHE_SESSION_KEY = 'payvvm_cache_session';
 
 export function useTransactionCache(address: string | undefined) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -62,6 +63,9 @@ export function useTransactionCache(address: string | undefined) {
         localStorage.removeItem(getCacheKey(addr));
         return null;
       }
+
+      // Sort transactions by block number (newest first) when loading from cache
+      data.transactions.sort((a, b) => b.blockNumber - a.blockNumber);
 
       console.log(
         `[Transaction Cache] Loaded ${data.transactions.length} txs from cache (age: ${Math.floor(age / 1000)}s)`
@@ -118,21 +122,24 @@ export function useTransactionCache(address: string | undefined) {
         throw new Error(data.error || 'Scan failed');
       }
 
+      // Sort transactions by block number (newest first)
+      const sortedTransactions = data.transactions.sort((a, b) => b.blockNumber - a.blockNumber);
+
       // Update state
-      setTransactions(data.transactions);
+      setTransactions(sortedTransactions);
       setMetadata(data.metadata);
 
       // Save to cache
       saveToCache(addr, {
-        transactions: data.transactions,
+        transactions: sortedTransactions,
         metadata: data.metadata,
       });
 
       console.log(
-        `[Transaction Cache] Scan complete! Found ${data.transactions.length} transactions`
+        `[Transaction Cache] Scan complete! Found ${sortedTransactions.length} transactions`
       );
 
-      return data.transactions;
+      return sortedTransactions;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to scan transactions';
       console.error('[Transaction Cache] Scan error:', errorMessage);
@@ -142,6 +149,23 @@ export function useTransactionCache(address: string | undefined) {
       setIsScanning(false);
     }
   }, [loadFromCache, saveToCache]);
+
+  // Clear cache on page refresh (detect new session)
+  useEffect(() => {
+    const sessionId = sessionStorage.getItem(CACHE_SESSION_KEY);
+    if (!sessionId) {
+      // New session detected - clear all transaction caches
+      console.log('[Transaction Cache] New session detected, clearing all caches');
+      const keys = Object.keys(localStorage);
+      keys.forEach(key => {
+        if (key.startsWith(CACHE_KEY_PREFIX)) {
+          localStorage.removeItem(key);
+        }
+      });
+      // Mark this session
+      sessionStorage.setItem(CACHE_SESSION_KEY, Date.now().toString());
+    }
+  }, []);
 
   // Auto-load on address change
   useEffect(() => {

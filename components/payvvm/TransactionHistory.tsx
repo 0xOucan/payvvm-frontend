@@ -50,6 +50,8 @@ interface PYUSDTransfer {
 }
 
 const PYUSD_TOKEN = '0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9';
+const MATE_TOKEN = '0x0000000000000000000000000000000000000001';
+const GOLDEN_FISHER = '0x121c631B7aEa24316bD90B22C989Ca008a84E5Ed';
 
 interface TransactionHistoryProps {
   address: string | null;
@@ -69,8 +71,12 @@ export function TransactionHistory({ address, limit = 50 }: TransactionHistoryPr
   const [ethTxs, setEthTxs] = useState<ETHTransfer[]>([]);
   const [pyusdTxs, setPyusdTxs] = useState<PYUSDTransfer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('payvvm');
+  const [activeTab, setActiveTab] = useState('all'); // Changed from 'payvvm' to 'all'
   const publicClient = usePublicClient();
+
+  // Filter transactions by token type
+  const mateTxs = payvvmTxs.filter(tx => tx.token.toLowerCase() === MATE_TOKEN.toLowerCase());
+  const pyusdPayvvmTxs = payvvmTxs.filter(tx => tx.token.toLowerCase() === PYUSD_TOKEN.toLowerCase());
 
   // Load ETH and PYUSD transfers (keep original logic for these)
   useEffect(() => {
@@ -177,27 +183,27 @@ export function TransactionHistory({ address, limit = 50 }: TransactionHistoryPr
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3 mb-6">
-          <TabsTrigger value="payvvm" className="font-mono">
-            PayVVM ({payvvmTxs.length})
+          <TabsTrigger value="all" className="font-mono">
+            All ({payvvmTxs.length})
           </TabsTrigger>
-          <TabsTrigger value="eth" className="font-mono">
-            ETH ({ethTxs.length})
+          <TabsTrigger value="mate" className="font-mono">
+            MATE ({mateTxs.length})
           </TabsTrigger>
           <TabsTrigger value="pyusd" className="font-mono">
-            PYUSD ({pyusdTxs.length})
+            PYUSD ({pyusdPayvvmTxs.length})
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="payvvm">
+        <TabsContent value="all">
           <PayVVMTransactionList transactions={payvvmTxs} userAddress={address} />
         </TabsContent>
 
-      <TabsContent value="eth">
-        <ETHTransactionList transactions={ethTxs} userAddress={address} />
+      <TabsContent value="mate">
+        <PayVVMTransactionList transactions={mateTxs} userAddress={address} />
       </TabsContent>
 
       <TabsContent value="pyusd">
-        <PYUSDTransactionList transactions={pyusdTxs} userAddress={address} />
+        <PayVVMTransactionList transactions={pyusdPayvvmTxs} userAddress={address} />
       </TabsContent>
     </Tabs>
     </div>
@@ -253,6 +259,11 @@ function PayVVMTransactionList({ transactions, userAddress }: { transactions: Pa
                         PAYMENT
                       </Badge>
                     )}
+                    {tx.txType === 'treasury' && (
+                      <Badge variant="outline" className="font-mono text-xs border-purple-500/50 bg-purple-500/10">
+                        TREASURY
+                      </Badge>
+                    )}
                     {tx.functionName && (
                       <Badge variant="outline" className="font-mono text-xs border-purple-500/50">
                         {tx.functionName}
@@ -289,7 +300,9 @@ function PayVVMTransactionList({ transactions, userAddress }: { transactions: Pa
                     )}
                     <p className="text-muted-foreground">
                       Executed by: <span className="text-foreground text-amber-500">{tx.executedBy.slice(0, 6)}...{tx.executedBy.slice(-4)}</span>
-                      <span className="ml-1 text-xs opacity-70">(Fisher)</span>
+                      <span className="ml-1 text-xs opacity-70">
+                        ({tx.executedBy.toLowerCase() === GOLDEN_FISHER.toLowerCase() ? 'Fisher' : 'Direct'})
+                      </span>
                     </p>
                   </div>
                 </div>
