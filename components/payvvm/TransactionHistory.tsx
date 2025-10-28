@@ -7,7 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, ExternalLink, ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, ExternalLink, ArrowUpRight, ArrowDownRight, Activity, RefreshCw } from 'lucide-react';
+import { useTransactionCache } from '@/hooks/use-transaction-cache';
 
 // Type definitions (matching utils/hypersync.ts)
 interface PayVVMTransaction {
@@ -55,15 +57,24 @@ interface TransactionHistoryProps {
 }
 
 export function TransactionHistory({ address, limit = 50 }: TransactionHistoryProps) {
-  const [payvvmTxs, setPayvvmTxs] = useState<PayVVMTransaction[]>([]);
+  // Use transaction cache for PayVVM transactions (scans all history)
+  const {
+    transactions: payvvmTxs,
+    isLoading: payvvmLoading,
+    isScanning,
+    metadata,
+    refresh,
+  } = useTransactionCache(address || undefined);
+
   const [ethTxs, setEthTxs] = useState<ETHTransfer[]>([]);
   const [pyusdTxs, setPyusdTxs] = useState<PYUSDTransfer[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('payvvm');
   const publicClient = usePublicClient();
 
+  // Load ETH and PYUSD transfers (keep original logic for these)
   useEffect(() => {
-    async function loadTransactions() {
+    async function loadOtherTransactions() {
       if (!address) {
         setLoading(false);
         return;
@@ -71,19 +82,14 @@ export function TransactionHistory({ address, limit = 50 }: TransactionHistoryPr
 
       setLoading(true);
       try {
-        // Get current block number
         const currentBlock = await publicClient?.getBlockNumber();
         if (!currentBlock) {
           throw new Error('Failed to get current block number');
         }
 
-        // Query last 500 blocks (fisher generates many txs, causing truncation)
-        // Add +200 block buffer to account for HyperSync indexing delay
-        // 500 blocks on Sepolia ≈ 1.7 hours of history
         const fromBlock = Number(currentBlock) - 500;
         const toBlock = Number(currentBlock) + 200;
 
-        // Call API routes instead of HyperSync directly
         const params = new URLSearchParams({
           address,
           fromBlock: fromBlock.toString(),
@@ -91,29 +97,26 @@ export function TransactionHistory({ address, limit = 50 }: TransactionHistoryPr
           limit: limit.toString(),
         });
 
-        const [payvvmRes, ethRes, pyusdRes] = await Promise.all([
-          fetch(`/api/explorer?${params.toString()}&type=payvvm`),
+        const [ethRes, pyusdRes] = await Promise.all([
           fetch(`/api/explorer?${params.toString()}&type=eth`),
           fetch(`/api/explorer?${params.toString()}&type=pyusd`),
         ]);
 
-        const [payvvmData, ethData, pyusdData] = await Promise.all([
-          payvvmRes.json(),
+        const [ethData, pyusdData] = await Promise.all([
           ethRes.json(),
           pyusdRes.json(),
         ]);
 
-        setPayvvmTxs(payvvmData.transactions || []);
         setEthTxs(ethData.transactions || []);
         setPyusdTxs(pyusdData.transactions || []);
       } catch (error) {
-        console.error('Error loading transactions:', error);
+        console.error('Error loading other transactions:', error);
       } finally {
         setLoading(false);
       }
     }
 
-    loadTransactions();
+    loadOtherTransactions();
   }, [address, limit, publicClient]);
 
   if (!address) {
@@ -130,15 +133,22 @@ export function TransactionHistory({ address, limit = 50 }: TransactionHistoryPr
     );
   }
 
-  if (loading) {
+  if (payvvmLoading || loading) {
     return (
       <Card className="bg-card/50 backdrop-blur border-primary/50">
         <CardContent className="p-8">
           <div className="flex flex-col items-center gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground font-mono">
-              Loading transactions from HyperSync...
+              {isScanning
+                ? `Scanning transaction history... ${metadata ? `${metadata.chunksScanned}/${Math.ceil(metadata.totalBlocks / 500)} chunks` : ''}`
+                : 'Loading transactions from cache...'}
             </p>
+            {metadata && metadata.totalTransactions > 0 && (
+              <p className="text-xs text-muted-foreground font-mono">
+                Found {metadata.totalTransactions} transactions so far
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -146,22 +156,41 @@ export function TransactionHistory({ address, limit = 50 }: TransactionHistoryPr
   }
 
   return (
-    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid w-full grid-cols-3 mb-6">
-        <TabsTrigger value="payvvm" className="font-mono">
-          PayVVM ({payvvmTxs.length})
-        </TabsTrigger>
-        <TabsTrigger value="eth" className="font-mono">
-          ETH ({ethTxs.length})
-        </TabsTrigger>
-        <TabsTrigger value="pyusd" className="font-mono">
-          PYUSD ({pyusdTxs.length})
-        </TabsTrigger>
-      </TabsList>
+    <div className="space-y-4">
+      {metadata && (
+        <div className="flex items-center justify-between px-1">
+          <p className="text-xs text-muted-foreground font-mono">
+            Full history scanned • {metadata.totalTransactions} total transactions
+          </p>
+          <Button
+            onClick={() => refresh()}
+            variant="outline"
+            size="sm"
+            className="gap-2 font-mono"
+            disabled={isScanning}
+          >
+            <RefreshCw className={`h-3 w-3 ${isScanning ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
+      )}
 
-      <TabsContent value="payvvm">
-        <PayVVMTransactionList transactions={payvvmTxs} userAddress={address} />
-      </TabsContent>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsTrigger value="payvvm" className="font-mono">
+            PayVVM ({payvvmTxs.length})
+          </TabsTrigger>
+          <TabsTrigger value="eth" className="font-mono">
+            ETH ({ethTxs.length})
+          </TabsTrigger>
+          <TabsTrigger value="pyusd" className="font-mono">
+            PYUSD ({pyusdTxs.length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="payvvm">
+          <PayVVMTransactionList transactions={payvvmTxs} userAddress={address} />
+        </TabsContent>
 
       <TabsContent value="eth">
         <ETHTransactionList transactions={ethTxs} userAddress={address} />
@@ -171,6 +200,7 @@ export function TransactionHistory({ address, limit = 50 }: TransactionHistoryPr
         <PYUSDTransactionList transactions={pyusdTxs} userAddress={address} />
       </TabsContent>
     </Tabs>
+    </div>
   );
 }
 

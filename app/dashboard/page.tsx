@@ -16,6 +16,7 @@ import { useUserBalance } from "@/hooks/payvvm/useEvvmState"
 import { useBalance } from "wagmi"
 import { formatUnits } from "viem"
 import type { PayVVMTransaction } from "@/utils/hypersync"
+import { useTransactionCache } from "@/hooks/use-transaction-cache"
 
 interface Balance {
   symbol: string
@@ -77,10 +78,15 @@ export default function DashboardPage() {
   // MATE balance from EVVM
   const mateEvvmBalance = useUserBalance(address, MATE_TOKEN)
 
-  // Recent transactions state
-  const [recentTxs, setRecentTxs] = useState<PayVVMTransaction[]>([])
-  const [txsLoading, setTxsLoading] = useState(false)
-  const [txsError, setTxsError] = useState<string | null>(null)
+  // Use transaction cache for recent transactions
+  const {
+    transactions: allTxs,
+    isLoading: txsLoading,
+    error: txsError,
+  } = useTransactionCache(address || undefined);
+
+  // Show only 5 most recent transactions
+  const recentTxs = allTxs.slice(0, 5);
 
   useEffect(() => {
     if (!isConnected) {
@@ -88,48 +94,6 @@ export default function DashboardPage() {
       return
     }
   }, [isConnected, router])
-
-  // Fetch recent transactions
-  useEffect(() => {
-    if (!address) return
-
-    async function fetchRecentTxs() {
-      setTxsLoading(true)
-      setTxsError(null)
-
-      try {
-        // Use dynamic block range (same as Explorer component)
-        // Get current block and query last 500 blocks for recent activity
-        const currentBlockResponse = await fetch('https://sepolia.etherscan.io/api?module=proxy&action=eth_blockNumber')
-        const currentBlockData = await currentBlockResponse.json()
-        const currentBlock = parseInt(currentBlockData.result, 16)
-
-        const fromBlock = currentBlock - 500  // Last 500 blocks (~1.7 hours)
-        const toBlock = currentBlock + 200    // +200 buffer for indexing delay
-
-        const response = await fetch(
-          `/api/explorer?address=${address}&type=payvvm&fromBlock=${fromBlock}&toBlock=${toBlock}&limit=5`
-        )
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch transactions')
-        }
-
-        const data = await response.json()
-
-        if (data.success && data.transactions) {
-          setRecentTxs(data.transactions.slice(0, 5))  // Only show 5 most recent
-        }
-      } catch (error) {
-        console.error('Error fetching recent transactions:', error)
-        setTxsError('Failed to load transactions')
-      } finally {
-        setTxsLoading(false)
-      }
-    }
-
-    fetchRecentTxs()
-  }, [address])
 
   if (!isConnected || !address) {
     return null

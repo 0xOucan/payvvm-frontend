@@ -35,14 +35,15 @@ export async function POST(request: NextRequest) {
     const totalBlocks = currentBlock - EVVM_CREATION_BLOCK;
     const totalChunks = Math.ceil(totalBlocks / CHUNK_SIZE);
 
-    console.log(`[Transaction Scan] Scanning ${totalChunks} chunks (${totalBlocks} blocks) from ${EVVM_CREATION_BLOCK} to ${currentBlock}`);
+    console.log(`[Transaction Scan] Scanning ${totalChunks} chunks (${totalBlocks} blocks) from ${currentBlock} to ${EVVM_CREATION_BLOCK} (newest first)`);
 
-    // Scan all chunks
+    // Scan all chunks in REVERSE order (newest to oldest)
+    // This shows recent transactions first
     const allTransactions = [];
     let chunksScanned = 0;
 
-    for (let fromBlock = EVVM_CREATION_BLOCK; fromBlock <= currentBlock; fromBlock += CHUNK_SIZE) {
-      const toBlock = Math.min(fromBlock + CHUNK_SIZE - 1, currentBlock);
+    for (let toBlock = currentBlock; toBlock >= EVVM_CREATION_BLOCK; toBlock -= CHUNK_SIZE) {
+      const fromBlock = Math.max(toBlock - CHUNK_SIZE + 1, EVVM_CREATION_BLOCK);
 
       // Fetch transactions for this chunk
       const chunkTxs = await fetchPayVVMTransactions(
