@@ -158,11 +158,20 @@ function decodeClaimMate(input: string): { claimer: string; token: string; amoun
 async function queryHyperSync(query: any): Promise<any> {
   console.log('[HyperSync HTTP] Querying:', JSON.stringify(query).slice(0, 200));
 
+  // Build headers with optional API token for authenticated requests
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  const apiKey = process.env.NEXT_PUBLIC_ENVIO_API_KEY;
+  if (apiKey) {
+    headers['Authorization'] = `Bearer ${apiKey}`;
+    console.log('[HyperSync HTTP] Using authenticated API token');
+  }
+
   const response = await fetch(HYPERSYNC_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: JSON.stringify(query),
   });
 
