@@ -326,8 +326,8 @@ export async function fetchPayVVMTransactions(
       continue;
     }
 
-    // Only include transactions where user is involved
-    if (userAddress_tx !== userAddr && recipientAddress !== userAddr) {
+    // Only include transactions where user is involved (skip filter if address is empty)
+    if (userAddr && userAddress_tx !== userAddr && recipientAddress !== userAddr) {
       continue;
     }
 
