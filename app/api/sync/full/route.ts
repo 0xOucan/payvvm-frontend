@@ -14,6 +14,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSyncProgress, updateSyncProgress } from '@/lib/kv';
+import { syncBatch } from '@/lib/sync';
 
 const EVVM_CREATION_BLOCK = 9455841;
 const CHUNK_SIZE = 500;
@@ -51,18 +52,8 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Sync Full] Syncing chunk: ${fromBlock} to ${toBlock}`);
 
-    // Call batch sync endpoint internally
-    const batchResponse = await fetch(`${request.nextUrl.origin}/api/sync/batch`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fromBlock, toBlock }),
-    });
-
-    if (!batchResponse.ok) {
-      throw new Error(`Batch sync failed: ${await batchResponse.text()}`);
-    }
-
-    const batchResult = await batchResponse.json();
+    // Call batch sync logic directly
+    const batchResult = await syncBatch(fromBlock, toBlock);
 
     // Update sync progress
     await updateSyncProgress(toBlock);
