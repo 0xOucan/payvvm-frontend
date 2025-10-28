@@ -9,23 +9,32 @@
 export const EVVM_CONTRACT = '0x9486f6C9d28ECdd95aba5bfa6188Bbc104d89C3e' as const;
 export const GOLDEN_FISHER = '0x121c631B7aEa24316bD90B22C989Ca008a84E5Ed' as const;
 export const PYUSD_TOKEN = '0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9' as const;
+export const PYUSD_FAUCET = '0x74F7A28aF1241cfBeC7c6DBf5e585Afc18832a9a' as const;
+export const MATE_FAUCET = '0x068E9091e430786133439258C4BeeD696939405e' as const;
+export const STAKING_CONTRACT = '0x64A47d84dE05B9Efda4F63Fbca2Fc8cEb96E6816' as const;
+export const TREASURY_CONTRACT = '0x3D6cB29a1F97a2CFf7a48af96F7ED3A02F6aA38E' as const;
 
 // HyperSync HTTP API endpoint
 const HYPERSYNC_URL = 'https://sepolia.hypersync.xyz/query';
 
-// Function selectors
-const PAY_FUNCTION_SELECTOR = '0x2e9621cb'; // pay() function
+// Function selectors (keccak256 of function signature, first 4 bytes)
+const PAY_FUNCTION_SELECTOR = '0x2e9621cb'; // pay(address,address,string,address,uint256,uint256,uint256,bool,address,bytes)
+const CLAIM_PYUSD_SELECTOR = '0x5db52cf7'; // claimPyusd(address,uint256,bytes)
+const CLAIM_MATE_SELECTOR = '0x44d00f82'; // claimMate(address,uint256,bytes) - TODO: verify this selector
+const CA_PAY_SELECTOR = '0xc898a6e9'; // caPay(address,address,uint256) - internal payment from faucet
 
 export interface PayVVMTransaction {
   hash: string;
   blockNumber: number;
   timestamp: number;
-  from: string; // Original sender
+  from: string; // Original sender/claimer/signer
   to: string; // Recipient
   token: string;
   amount: string;
   type: 'send' | 'receive';
-  executedBy: string; // Golden fisher address
+  executedBy: string; // Golden fisher address who executed the tx
+  txType: 'payment' | 'faucet_claim' | 'staking' | 'treasury' | 'unknown'; // Transaction type
+  functionName?: string; // Function name (pay, claimPyusd, etc.)
   gasUsed?: string;
 }
 
@@ -90,6 +99,59 @@ function decodePay(input: string): { from: string; to: string; token: string; am
 }
 
 /**
+ * Decode claimPyusd() function parameters from transaction input
+ * claimPyusd(address claimer, uint256 nonce, bytes signature)
+ */
+function decodeClaimPyusd(input: string): { claimer: string; token: string; amount: string } | null {
+  try {
+    const data = input.slice(2 + 8); // Remove "0x" + selector
+
+    // Slot 0: claimer address (last 20 bytes)
+    const claimerAddress = '0x' + data.slice(24, 64);
+
+    // Fixed amount for PYUSD faucet: 1 PYUSD = 1000000 (6 decimals)
+    const amount = '1000000';
+
+    return {
+      claimer: claimerAddress.toLowerCase(),
+      token: PYUSD_TOKEN.toLowerCase(),
+      amount,
+    };
+  } catch (error) {
+    console.error('Failed to decode claimPyusd() input:', error);
+    return null;
+  }
+}
+
+/**
+ * Decode claimMate() function parameters from transaction input
+ * claimMate(address claimer, uint256 nonce, bytes signature)
+ */
+function decodeClaimMate(input: string): { claimer: string; token: string; amount: string } | null {
+  try {
+    const data = input.slice(2 + 8); // Remove "0x" + selector
+
+    // Slot 0: claimer address (last 20 bytes)
+    const claimerAddress = '0x' + data.slice(24, 64);
+
+    // Fixed amount for MATE faucet: 510 MATE = 510000000000000000000 (18 decimals)
+    const amount = '510000000000000000000';
+
+    // MATE token address (protocol constant)
+    const mateToken = '0x0000000000000000000000000000000000000001';
+
+    return {
+      claimer: claimerAddress.toLowerCase(),
+      token: mateToken.toLowerCase(),
+      amount,
+    };
+  } catch (error) {
+    console.error('Failed to decode claimMate() input:', error);
+    return null;
+  }
+}
+
+/**
  * Query HyperSync HTTP API
  */
 async function queryHyperSync(query: any): Promise<any> {
@@ -118,8 +180,9 @@ async function queryHyperSync(query: any): Promise<any> {
 }
 
 /**
- * Fetch PayVVM transactions (pay() function calls from golden fisher)
+ * Fetch PayVVM transactions (all fisher-executed transactions to PayVVM ecosystem)
  * IMPORTANT: Only returns SUCCESSFUL transactions (filters out reverted transactions)
+ * Now includes: pay(), claimPyusd(), claimMate(), and other fisher-executed functions
  */
 export async function fetchPayVVMTransactions(
   userAddress: string,
@@ -129,16 +192,21 @@ export async function fetchPayVVMTransactions(
 ): Promise<PayVVMTransaction[]> {
   const userAddr = userAddress.toLowerCase();
 
-  // CRITICAL: EVVM pay() function doesn't emit events, so we can't use log-based filtering
-  // We MUST query transactions directly using status field in the selection object
-  // According to HyperSync docs, status goes INSIDE the TransactionSelection object
+  // Query all transactions FROM fisher TO any PayVVM contract
+  // This includes EVVM, faucets, staking, treasury, etc.
   const query = {
     from_block: fromBlock,
     to_block: toBlock,
     transactions: [
       {
         from: [GOLDEN_FISHER.toLowerCase()],
-        to: [EVVM_CONTRACT.toLowerCase()],
+        to: [
+          EVVM_CONTRACT.toLowerCase(),
+          PYUSD_FAUCET.toLowerCase(),
+          MATE_FAUCET.toLowerCase(),
+          STAKING_CONTRACT.toLowerCase(),
+          TREASURY_CONTRACT.toLowerCase(),
+        ],
         status: 1, // CRITICAL: Filter for successful transactions only (1 = success, 0 = failed)
       },
     ],
@@ -184,35 +252,83 @@ export async function fetchPayVVMTransactions(
       continue;
     }
 
-    // Only process pay() function calls
-    if (!tx.input || !tx.input.startsWith(PAY_FUNCTION_SELECTOR)) {
-      continue;
-    }
-
-    const decoded = decodePay(tx.input);
-    if (!decoded) {
-      console.log(`[HyperSync] ⚠️ Failed to decode pay() tx: ${tx.hash}`);
-      continue;
-    }
-
-    // Only include transactions where user is sender or recipient
-    if (decoded.from !== userAddr && decoded.to !== userAddr) {
-      continue;
-    }
+    if (!tx.input) continue;
 
     const block = blockMap.get(Number(tx.block_number));
     const timestamp = block ? Number(block.timestamp) : 0;
+    const contractTo = tx.to.toLowerCase();
+
+    // Determine transaction type and decode based on function selector
+    let txType: 'payment' | 'faucet_claim' | 'staking' | 'treasury' | 'unknown' = 'unknown';
+    let functionName = 'unknown';
+    let userAddress_tx: string | null = null;
+    let recipientAddress: string | null = null;
+    let tokenAddress: string | null = null;
+    let amountValue: string | null = null;
+
+    // Decode based on function selector
+    if (tx.input.startsWith(PAY_FUNCTION_SELECTOR)) {
+      // pay() function
+      const decoded = decodePay(tx.input);
+      if (!decoded) {
+        console.log(`[HyperSync] ⚠️ Failed to decode pay() tx: ${tx.hash}`);
+        continue;
+      }
+      userAddress_tx = decoded.from;
+      recipientAddress = decoded.to;
+      tokenAddress = decoded.token;
+      amountValue = decoded.amount;
+      txType = 'payment';
+      functionName = 'pay';
+    } else if (tx.input.startsWith(CLAIM_PYUSD_SELECTOR)) {
+      // claimPyusd() function
+      const decoded = decodeClaimPyusd(tx.input);
+      if (!decoded) {
+        console.log(`[HyperSync] ⚠️ Failed to decode claimPyusd() tx: ${tx.hash}`);
+        continue;
+      }
+      userAddress_tx = decoded.claimer;
+      recipientAddress = decoded.claimer; // Claimer receives the PYUSD
+      tokenAddress = decoded.token;
+      amountValue = decoded.amount;
+      txType = 'faucet_claim';
+      functionName = 'claimPyusd';
+    } else if (tx.input.startsWith(CLAIM_MATE_SELECTOR)) {
+      // claimMate() function
+      const decoded = decodeClaimMate(tx.input);
+      if (!decoded) {
+        console.log(`[HyperSync] ⚠️ Failed to decode claimMate() tx: ${tx.hash}`);
+        continue;
+      }
+      userAddress_tx = decoded.claimer;
+      recipientAddress = decoded.claimer; // Claimer receives the MATE
+      tokenAddress = decoded.token;
+      amountValue = decoded.amount;
+      txType = 'faucet_claim';
+      functionName = 'claimMate';
+    } else {
+      // Unknown function - skip for now
+      console.log(`[HyperSync] ⚠️ Unknown function selector in tx: ${tx.hash} - ${tx.input.slice(0, 10)}`);
+      continue;
+    }
+
+    // Only include transactions where user is involved
+    if (userAddress_tx !== userAddr && recipientAddress !== userAddr) {
+      continue;
+    }
 
     transactions.push({
       hash: tx.hash,
       blockNumber: Number(tx.block_number),
       timestamp,
-      from: decoded.from,
-      to: decoded.to,
-      token: decoded.token,
-      amount: decoded.amount,
-      type: decoded.from === userAddr ? 'send' : 'receive',
+      from: userAddress_tx || '',
+      to: recipientAddress || '',
+      token: tokenAddress || '',
+      amount: amountValue || '0',
+      type: userAddress_tx === userAddr ? 'send' : 'receive',
       executedBy: tx.from.toLowerCase(),
+      txType,
+      functionName,
       gasUsed: tx.gas_used ? tx.gas_used.toString() : undefined,
     });
 

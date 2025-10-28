@@ -20,6 +20,8 @@ interface PayVVMTransaction {
   amount: string;
   type: 'send' | 'receive';
   executedBy: string;
+  txType: 'payment' | 'faucet_claim' | 'staking' | 'treasury' | 'unknown';
+  functionName?: string;
   gasUsed?: string;
 }
 
@@ -197,7 +199,7 @@ function PayVVMTransactionList({ transactions, userAddress }: { transactions: Pa
               <div className="flex items-start justify-between gap-4">
                 {/* Left: Type and addresses */}
                 <div className="flex-1 space-y-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     {isSender ? (
                       <ArrowUpRight className="h-4 w-4 text-red-500" />
                     ) : (
@@ -209,22 +211,53 @@ function PayVVMTransactionList({ transactions, userAddress }: { transactions: Pa
                     <Badge variant="outline" className="font-mono text-xs border-amber-500/50">
                       Gasless
                     </Badge>
+                    {tx.txType === 'faucet_claim' && (
+                      <Badge variant="outline" className="font-mono text-xs border-green-500/50 bg-green-500/10">
+                        FAUCET CLAIM
+                      </Badge>
+                    )}
+                    {tx.txType === 'payment' && (
+                      <Badge variant="outline" className="font-mono text-xs border-blue-500/50 bg-blue-500/10">
+                        PAYMENT
+                      </Badge>
+                    )}
+                    {tx.functionName && (
+                      <Badge variant="outline" className="font-mono text-xs border-purple-500/50">
+                        {tx.functionName}
+                      </Badge>
+                    )}
                   </div>
 
                   <div className="space-y-1 text-xs font-mono">
+                    {tx.txType === 'faucet_claim' ? (
+                      <>
+                        <p className="text-muted-foreground">
+                          Claimer: <span className="text-foreground font-semibold">{tx.from.slice(0, 6)}...{tx.from.slice(-4)}</span>
+                        </p>
+                        <p className="text-muted-foreground">
+                          Token: <span className="text-foreground">
+                            {tx.token.toLowerCase() === PYUSD_TOKEN.toLowerCase() ? 'PYUSD' : 'MATE'}
+                          </span>
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-muted-foreground">
+                          From: <span className="text-foreground">{tx.from.slice(0, 6)}...{tx.from.slice(-4)}</span>
+                        </p>
+                        <p className="text-muted-foreground">
+                          To: <span className="text-foreground">{tx.to.slice(0, 6)}...{tx.to.slice(-4)}</span>
+                        </p>
+                        <p className="text-muted-foreground">
+                          Token: <span className="text-foreground">
+                            {tx.token.toLowerCase() === PYUSD_TOKEN.toLowerCase() ? 'PYUSD' : 'MATE'}
+                          </span>
+                        </p>
+                      </>
+                    )}
                     <p className="text-muted-foreground">
-                      From: <span className="text-foreground">{tx.from.slice(0, 6)}...{tx.from.slice(-4)}</span>
-                    </p>
-                    <p className="text-muted-foreground">
-                      To: <span className="text-foreground">{tx.to.slice(0, 6)}...{tx.to.slice(-4)}</span>
-                    </p>
-                    <p className="text-muted-foreground">
-                      Token: <span className="text-foreground">
-                        {tx.token.toLowerCase() === PYUSD_TOKEN.toLowerCase() ? 'PYUSD' : 'MATE'}
-                      </span>
-                    </p>
-                    <p className="text-muted-foreground">
-                      Fisher: <span className="text-foreground">{tx.executedBy.slice(0, 6)}...{tx.executedBy.slice(-4)}</span>
+                      Executed by: <span className="text-foreground text-amber-500">{tx.executedBy.slice(0, 6)}...{tx.executedBy.slice(-4)}</span>
+                      <span className="ml-1 text-xs opacity-70">(Fisher)</span>
                     </p>
                   </div>
                 </div>
@@ -232,7 +265,7 @@ function PayVVMTransactionList({ transactions, userAddress }: { transactions: Pa
                 {/* Center: Amount */}
                 <div className="text-right">
                   <p className="text-lg font-bold font-mono">
-                    {isSender && '-'}
+                    {tx.txType === 'faucet_claim' ? '+' : (isSender ? '-' : '+')}
                     {formatUnits(BigInt(tx.amount), tx.token.toLowerCase() === PYUSD_TOKEN.toLowerCase() ? 6 : 18)}
                   </p>
                   <p className="text-xs text-muted-foreground font-mono">

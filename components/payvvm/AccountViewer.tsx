@@ -11,6 +11,8 @@ export const AccountViewer = ({ address }: { address?: `0x${string}` }) => {
 
   const { data, isLoading, refetch } = useUserAccount(targetAddress);
 
+  const [pyusdBalance, mateBalance, isStaker, nonce] = data || [];
+
   if (!targetAddress) {
     return (
       <div className="card bg-base-100 shadow-xl">
@@ -49,8 +51,6 @@ export const AccountViewer = ({ address }: { address?: `0x${string}` }) => {
     );
   }
 
-  const [balance, isStaker, nonce] = data || [];
-
   return (
     <div className="card bg-base-100 shadow-xl">
       <div className="card-body">
@@ -87,17 +87,31 @@ export const AccountViewer = ({ address }: { address?: `0x${string}` }) => {
             </div>
           </div>
 
-          {/* MATE Balance */}
+          {/* PYUSD Balance */}
           <div className="bg-gradient-to-r from-primary/10 to-accent/10 p-6 rounded-lg">
+            <p className="text-sm opacity-70 mb-2">PYUSD Balance (in EVVM)</p>
+            <div className="flex items-baseline gap-2">
+              <p className="text-4xl font-bold">
+                {pyusdBalance?.result ? (Number(pyusdBalance.result) / 1e6).toFixed(6) : '0.000000'}
+              </p>
+              <span className="text-lg opacity-70">PYUSD</span>
+            </div>
+            <p className="text-xs opacity-60 mt-2">
+              Raw: {pyusdBalance?.result?.toString() || '0'}
+            </p>
+          </div>
+
+          {/* MATE Balance */}
+          <div className="bg-gradient-to-r from-secondary/10 to-info/10 p-6 rounded-lg">
             <p className="text-sm opacity-70 mb-2">MATE Balance</p>
             <div className="flex items-baseline gap-2">
               <p className="text-4xl font-bold">
-                {balance?.result ? parseFloat(formatEther(balance.result)).toFixed(4) : '0.0000'}
+                {mateBalance?.result ? parseFloat(formatEther(mateBalance.result)).toFixed(4) : '0.0000'}
               </p>
               <span className="text-lg opacity-70">MATE</span>
             </div>
             <p className="text-xs opacity-60 mt-2">
-              Raw: {balance?.result?.toString() || '0'}
+              Raw: {mateBalance?.result?.toString() || '0'}
             </p>
           </div>
 

@@ -70,6 +70,7 @@ const EVVM_ABI = [
 
 const EVVM_ADDRESS = '0x9486f6C9d28ECdd95aba5bfa6188Bbc104d89C3e' as `0x${string}`;
 const MATE_TOKEN = '0x0000000000000000000000000000000000000001' as `0x${string}`;
+const PYUSD_TOKEN = '0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9' as `0x${string}`;
 
 /**
  * Hook to get EVVM system metadata
@@ -85,11 +86,17 @@ export function useEvvmMetadata() {
 
 /**
  * Hook to get user account state
- * Returns: [balance, isStaker, nonce]
+ * Returns: [pyusdBalance, mateBalance, isStaker, nonce]
  */
 export function useUserAccount(address?: `0x${string}`) {
   return useReadContracts({
     contracts: [
+      {
+        address: EVVM_ADDRESS,
+        abi: EVVM_ABI,
+        functionName: 'getBalance',
+        args: address ? [address, PYUSD_TOKEN] : undefined,
+      },
       {
         address: EVVM_ADDRESS,
         abi: EVVM_ABI,
