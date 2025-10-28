@@ -64,9 +64,10 @@ export function constructDispersePayMessage(
 ): string {
   // Calculate hash of recipient data using ABI encoding (same as Solidity's sha256(abi.encode(toData)))
   // Each recipient is a tuple of (uint256 amount, address to_address, string to_identity)
+  // IMPORTANT: Must lowercase addresses to match contract's AdvancedStrings.addressToString() output
   const recipientTuples = recipients.map(r => ({
     amount: BigInt(r.amount),
-    to_address: r.to_address as `0x${string}`,
+    to_address: r.to_address.toLowerCase() as `0x${string}`,
     to_identity: r.to_identity || '',
   }));
 
