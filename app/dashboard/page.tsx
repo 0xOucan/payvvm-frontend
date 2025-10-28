@@ -98,10 +98,14 @@ export default function DashboardPage() {
       setTxsError(null)
 
       try {
-        // Get current block from HyperSync archive height (around block 9493614)
-        // Query last 10,000 blocks for recent activity
-        const toBlock = 9493614  // Latest indexed block
-        const fromBlock = toBlock - 10000
+        // Use dynamic block range (same as Explorer component)
+        // Get current block and query last 500 blocks for recent activity
+        const currentBlockResponse = await fetch('https://sepolia.etherscan.io/api?module=proxy&action=eth_blockNumber')
+        const currentBlockData = await currentBlockResponse.json()
+        const currentBlock = parseInt(currentBlockData.result, 16)
+
+        const fromBlock = currentBlock - 500  // Last 500 blocks (~1.7 hours)
+        const toBlock = currentBlock + 200    // +200 buffer for indexing delay
 
         const response = await fetch(
           `/api/explorer?address=${address}&type=payvvm&fromBlock=${fromBlock}&toBlock=${toBlock}&limit=5`
