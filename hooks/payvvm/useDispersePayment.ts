@@ -4,7 +4,7 @@
  */
 
 import { useAccount, useSignMessage, useReadContract } from 'wagmi';
-import { parseUnits, zeroAddress, keccak256, toBytes, encodeAbiParameters } from 'viem';
+import { parseUnits, zeroAddress, sha256, toBytes, encodeAbiParameters } from 'viem';
 import { useState } from 'react';
 import { useUserAccount, useEvvmId } from './useEvvmState';
 
@@ -62,7 +62,7 @@ export function constructDispersePayMessage(
   priorityFlag: boolean,
   executor: string
 ): string {
-  // Calculate hash of recipient data using ABI encoding (same as Solidity's keccak256(abi.encode(toData)))
+  // Calculate hash of recipient data using ABI encoding (same as Solidity's sha256(abi.encode(toData)))
   // Each recipient is a tuple of (uint256 amount, address to_address, string to_identity)
   const recipientTuples = recipients.map(r => ({
     amount: BigInt(r.amount),
@@ -85,8 +85,8 @@ export function constructDispersePayMessage(
     [recipientTuples]
   );
 
-  // Hash the ABI-encoded data
-  const hashList = keccak256(encodedRecipients);
+  // Hash the ABI-encoded data using SHA256 (as per EVVM spec)
+  const hashList = sha256(encodedRecipients);
 
   // Convert addresses to lowercase with 0x prefix
   const formattedToken = token.toLowerCase();
