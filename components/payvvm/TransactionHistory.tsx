@@ -77,10 +77,10 @@ export function TransactionHistory({ address, limit = 50 }: TransactionHistoryPr
           throw new Error('Failed to get current block number');
         }
 
-        // Query last 10,000 blocks (reduces HyperSync max_num_transactions limit issues)
+        // Query last 1,000 blocks (avoids HyperSync query truncation with fisher txs)
         // Add +200 block buffer to account for HyperSync indexing delay
-        // 10k blocks on Sepolia ≈ 33 hours of history
-        const fromBlock = Number(currentBlock) - 10000;
+        // 1k blocks on Sepolia ≈ 3.3 hours of history
+        const fromBlock = Number(currentBlock) - 1000;
         const toBlock = Number(currentBlock) + 200;
 
         // Call API routes instead of HyperSync directly
