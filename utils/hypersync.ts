@@ -20,7 +20,8 @@ const HYPERSYNC_URL = 'https://sepolia.hypersync.xyz/query';
 // Function selectors (keccak256 of function signature, first 4 bytes)
 const PAY_FUNCTION_SELECTOR = '0x2e9621cb'; // pay(address,address,string,address,uint256,uint256,uint256,bool,address,bytes)
 const CLAIM_PYUSD_SELECTOR = '0x5db52cf7'; // claimPyusd(address,uint256,bytes)
-const CLAIM_MATE_SELECTOR = '0x44d00f82'; // claimMate(address,uint256,bytes) - TODO: verify this selector
+const CLAIM_MATE_SELECTOR = '0xf1f50eec'; // claimMate(address,uint256,bytes) - VERIFIED from Etherscan
+const GOLDEN_STAKING_SELECTOR = '0x475c31ff'; // goldenStaking(bool,uint256,bytes) - VERIFIED from Etherscan
 const CA_PAY_SELECTOR = '0xc898a6e9'; // caPay(address,address,uint256) - internal payment from faucet
 
 export interface PayVVMTransaction {
@@ -306,6 +307,10 @@ export async function fetchPayVVMTransactions(
       amountValue = decoded.amount;
       txType = 'faucet_claim';
       functionName = 'claimMate';
+    } else if (tx.input.startsWith(GOLDEN_STAKING_SELECTOR)) {
+      // goldenStaking() function - Skip for now (requires signature recovery)
+      console.log(`[HyperSync] ℹ️ Skipping goldenStaking tx: ${tx.hash} (not yet supported)`);
+      continue;
     } else {
       // Unknown function - skip for now
       console.log(`[HyperSync] ⚠️ Unknown function selector in tx: ${tx.hash} - ${tx.input.slice(0, 10)}`);
