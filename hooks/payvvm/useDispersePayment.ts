@@ -95,9 +95,17 @@ export function constructDispersePayMessage(
 
   const message = `${evvmId},dispersePay,${hashList},${formattedToken},${totalAmount},${priorityFee},${nonce},${formattedPriorityFlag},${formattedExecutor}`;
 
-  console.log('Constructed dispersePay message:', message);
-  console.log('Recipients hash (ABI-encoded):', hashList);
-  console.log('Encoded recipients:', encodedRecipients);
+  console.log('=== dispersePay Signature Construction ===');
+  console.log('Recipients input:', JSON.stringify(recipients, null, 2));
+  console.log('Recipients tuples:', JSON.stringify(recipientTuples.map(r => ({
+    amount: r.amount.toString(),
+    to_address: r.to_address,
+    to_identity: r.to_identity
+  })), null, 2));
+  console.log('Encoded recipients (hex):', encodedRecipients);
+  console.log('Recipients hash (SHA256):', hashList);
+  console.log('Full message:', message);
+  console.log('==========================================');
   return message;
 }
 
