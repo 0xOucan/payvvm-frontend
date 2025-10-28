@@ -127,8 +127,8 @@ export function useDispersePayment() {
     reset: resetSign,
   } = useSignMessage();
 
-  // Extract nonce from user data
-  const userNonce = userData?.[2]?.result as bigint | undefined;
+  // Extract nonce from user data (index 3 = getNextCurrentSyncNonce)
+  const userNonce = userData?.[3]?.result as bigint | undefined;
 
   /**
    * Initiate dispersePay: construct signature and sign
