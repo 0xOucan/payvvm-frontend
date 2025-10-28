@@ -78,8 +78,9 @@ export function TransactionHistory({ address, limit = 50 }: TransactionHistoryPr
         }
 
         // Query last 50,000 blocks for comprehensive history
+        // Add +200 block buffer to account for HyperSync indexing delay
         const fromBlock = Number(currentBlock) - 50000;
-        const toBlock = Number(currentBlock);
+        const toBlock = Number(currentBlock) + 200;
 
         // Call API routes instead of HyperSync directly
         const params = new URLSearchParams({
