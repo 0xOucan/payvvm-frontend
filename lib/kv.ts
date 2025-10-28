@@ -2,9 +2,23 @@
  * Vercel KV client for PayVVM transaction storage
  *
  * Stores EVVM internal transactions (MATE and PYUSD) executed via fisher network
+ *
+ * Auto-detects environment:
+ * - Production/Vercel: Uses real Vercel KV
+ * - Local dev (no KV env vars): Uses JSON file mock
  */
 
 import { kv } from '@vercel/kv';
+
+// Check if running in local dev mode without Vercel KV
+const isLocalDev = !process.env.KV_REST_API_URL && !process.env.KV_URL;
+
+// Dynamically import mock KV functions if in local dev
+let mockKV: typeof import('./kv-mock') | null = null;
+if (isLocalDev) {
+  console.log('[KV] Running in local mode - using JSON file storage (.data/payvvm-transactions.json)');
+  // Dynamic import will happen on first use
+}
 
 export interface StoredTransaction {
   hash: string;
@@ -41,6 +55,11 @@ export const KV_KEYS = {
  * Store a transaction in KV
  */
 export async function storeTx(tx: StoredTransaction): Promise<void> {
+  if (isLocalDev) {
+    if (!mockKV) mockKV = await import('./kv-mock');
+    return mockKV.storeTx(tx);
+  }
+
   const pipeline = kv.pipeline();
 
   // Store transaction data
@@ -64,6 +83,11 @@ export async function getUserTxs(
   limit: number = 50,
   offset: number = 0
 ): Promise<StoredTransaction[]> {
+  if (isLocalDev) {
+    if (!mockKV) mockKV = await import('./kv-mock');
+    return mockKV.getUserTxs(address, limit, offset);
+  }
+
   // Get transaction hashes sorted by timestamp (newest first)
   const hashes = await kv.zrange(
     KV_KEYS.userTxs(address),
@@ -92,6 +116,11 @@ export async function getTxsByBlockRange(
   toBlock: number,
   limit: number = 100
 ): Promise<StoredTransaction[]> {
+  if (isLocalDev) {
+    if (!mockKV) mockKV = await import('./kv-mock');
+    return mockKV.getTxsByBlockRange(fromBlock, toBlock, limit);
+  }
+
   // Get transaction hashes in block range
   const hashes = await kv.zrange(
     KV_KEYS.txsByBlock(),
@@ -119,6 +148,11 @@ export async function getTxsByBlockRange(
  * Get sync progress (last synced block)
  */
 export async function getSyncProgress(): Promise<{ lastBlock: number; lastSync: number }> {
+  if (isLocalDev) {
+    if (!mockKV) mockKV = await import('./kv-mock');
+    return mockKV.getSyncProgress();
+  }
+
   const progress = await kv.get<{ lastBlock: number; lastSync: number }>(KV_KEYS.syncProgress());
   return progress || { lastBlock: 9455840, lastSync: 0 }; // Start from EVVM creation - 1
 }
@@ -127,6 +161,11 @@ export async function getSyncProgress(): Promise<{ lastBlock: number; lastSync: 
  * Update sync progress
  */
 export async function updateSyncProgress(lastBlock: number): Promise<void> {
+  if (isLocalDev) {
+    if (!mockKV) mockKV = await import('./kv-mock');
+    return mockKV.updateSyncProgress(lastBlock);
+  }
+
   await kv.set(KV_KEYS.syncProgress(), {
     lastBlock,
     lastSync: Date.now(),
@@ -137,5 +176,10 @@ export async function updateSyncProgress(lastBlock: number): Promise<void> {
  * Get total transaction count for address
  */
 export async function getUserTxCount(address: string): Promise<number> {
+  if (isLocalDev) {
+    if (!mockKV) mockKV = await import('./kv-mock');
+    return mockKV.getUserTxCount(address);
+  }
+
   return await kv.zcard(KV_KEYS.userTxs(address)) || 0;
 }
