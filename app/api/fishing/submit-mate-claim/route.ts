@@ -134,8 +134,8 @@ export async function GET(request: NextRequest) {
 
     // Filter and sort MATE claims
     let mateclaims = onlyPending
-      ? pendingMateClaims.filter(c => !c.executed)
-      : pendingMateClaims;
+      ? mateClaimHistory.filter(c => !c.executed)
+      : mateClaimHistory;
 
     // Sort by timestamp (FIFO)
     mateclaims = mateclaims
@@ -145,7 +145,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       count: mateclaims.length,
-      totalPending: pendingMateClaims.filter(c => !c.executed).length,
+      totalPending: mateClaimHistory.filter(c => !c.executed).length,
       mateclaims,
     });
 
@@ -174,7 +174,7 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const claim = pendingMateClaims.find(c => c.id === id);
+    const claim = mateClaimHistory.find(c => c.id === id);
     if (!claim) {
       return NextResponse.json(
         { error: 'MATE claim not found' },

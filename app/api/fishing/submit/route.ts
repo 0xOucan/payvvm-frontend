@@ -154,8 +154,8 @@ export async function GET(request: NextRequest) {
 
     // Filter and sort transactions
     let transactions = onlyPending
-      ? pendingTransactions.filter(tx => !tx.executed)
-      : pendingTransactions;
+      ? transactionHistory.filter(tx => !tx.executed)
+      : transactionHistory;
 
     // Sort by priority fee (descending), then timestamp (ascending)
     transactions = transactions
@@ -169,7 +169,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       count: transactions.length,
-      totalPending: pendingTransactions.filter(tx => !tx.executed).length,
+      totalPending: transactionHistory.filter(tx => !tx.executed).length,
       transactions,
     });
 
@@ -198,7 +198,7 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const transaction = pendingTransactions.find(tx => tx.id === id);
+    const transaction = transactionHistory.find(tx => tx.id === id);
     if (!transaction) {
       return NextResponse.json(
         { error: 'Transaction not found' },

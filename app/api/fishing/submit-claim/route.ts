@@ -134,8 +134,8 @@ export async function GET(request: NextRequest) {
 
     // Filter and sort claims
     let claims = onlyPending
-      ? pendingClaims.filter(c => !c.executed)
-      : pendingClaims;
+      ? claimHistory.filter(c => !c.executed)
+      : claimHistory;
 
     // Sort by timestamp (FIFO)
     claims = claims
@@ -145,7 +145,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       count: claims.length,
-      totalPending: pendingClaims.filter(c => !c.executed).length,
+      totalPending: claimHistory.filter(c => !c.executed).length,
       claims,
     });
 
@@ -174,7 +174,7 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const claim = pendingClaims.find(c => c.id === id);
+    const claim = claimHistory.find(c => c.id === id);
     if (!claim) {
       return NextResponse.json(
         { error: 'Claim not found' },
