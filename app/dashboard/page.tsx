@@ -62,6 +62,17 @@ function getTokenSymbol(token: string): string {
   return "???"
 }
 
+// Get transaction type label based on txType and type
+function getTransactionTypeLabel(tx: PayVVMTransaction): string {
+  // Priority to txType for specific transaction types
+  if (tx.txType === 'faucet_claim') return 'claim'
+  if (tx.txType === 'staking') return 'stake'
+  if (tx.txType === 'treasury') return 'treasury'
+
+  // Default to send/receive
+  return tx.type
+}
+
 export default function DashboardPage() {
   const { address, isConnected } = useAccount()
   const router = useRouter()
@@ -266,7 +277,8 @@ export default function DashboardPage() {
                 const tokenSymbol = getTokenSymbol(tx.token)
                 const amount = formatTokenAmount(tx.amount, tx.token)
                 const timeAgo = formatTimeAgo(tx.timestamp)
-                const counterparty = tx.type === 'send' ? tx.to : tx.from
+                const typeLabel = getTransactionTypeLabel(tx)
+                const counterparty = tx.txType === 'faucet_claim' ? tx.from : (tx.type === 'send' ? tx.to : tx.from)
 
                 return (
                   <div
@@ -275,10 +287,10 @@ export default function DashboardPage() {
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <Badge
-                        variant={tx.type === 'send' ? 'default' : 'secondary'}
+                        variant={typeLabel === 'send' ? 'default' : 'secondary'}
                         className="font-mono text-xs shrink-0"
                       >
-                        {tx.type}
+                        {typeLabel}
                       </Badge>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate font-mono">
@@ -289,7 +301,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="text-right shrink-0">
                       <p className="font-mono font-semibold text-sm">
-                        {tx.type === 'send' ? '-' : '+'}{amount} {tokenSymbol}
+                        {tx.txType === 'faucet_claim' ? '+' : (tx.type === 'send' ? '-' : '+')}{amount} {tokenSymbol}
                       </p>
                       <a
                         href={`https://sepolia.etherscan.io/tx/${tx.hash}`}
