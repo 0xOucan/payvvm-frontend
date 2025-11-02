@@ -28,7 +28,7 @@ export default function SendPage() {
   const [token, setToken] = useState<'PYUSD' | 'MATE'>('PYUSD')
 
   // State for QR scanner modal
-  const [showScanner] = useState(false)
+  const [showScanner, setShowScanner] = useState(false)
 
   // Read URL parameters on mount
   useEffect(() => {
@@ -51,10 +51,12 @@ export default function SendPage() {
   }, [isConnected, router])
 
   // Handle QR code scan
-  const handleQRScan = (data: { to: string; amount: string; memo?: string }) => {
+  const handleQRScan = (data: { to: string; amount: string; memo?: string; token?: 'PYUSD' | 'MATE' }) => {
     setRecipient(data.to)
     setAmount(data.amount)
     if (data.memo) setMemo(data.memo)
+    if (data.token && (data.token === 'PYUSD' || data.token === 'MATE')) setToken(data.token)
+    setShowScanner(false) // Close scanner after successful scan
   }
 
   if (!isConnected) {
