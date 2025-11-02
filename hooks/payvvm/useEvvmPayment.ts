@@ -10,6 +10,7 @@ import { useUserAccount, useEvvmId } from './useEvvmState';
 
 export const EVVM_ADDRESS = '0x9486f6C9d28ECdd95aba5bfa6188Bbc104d89C3e' as const;
 export const PYUSD_ADDRESS = '0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9' as const;
+export const MATE_ADDRESS = '0x0000000000000000000000000000000000000001' as const;
 
 // EVVM ABI for payment operations
 const EVVM_ABI = [
@@ -60,9 +61,14 @@ export function constructPaymentMessage(
 }
 
 /**
- * Hook to send PYUSD payment within EVVM
+ * Hook to send PYUSD or MATE payment within EVVM
+ * @param tokenAddress - Token contract address (PYUSD or MATE)
+ * @param tokenDecimals - Token decimals (6 for PYUSD, 18 for MATE)
  */
-export function useEvvmPayment() {
+export function useEvvmPayment(
+  tokenAddress: string = PYUSD_ADDRESS,
+  tokenDecimals: number = 6
+) {
   const { address } = useAccount();
   const [paymentData, setPaymentData] = useState<{
     to: string;
@@ -119,16 +125,16 @@ export function useEvvmPayment() {
     setPaymentData({ to, amount, priorityFee });
 
     try {
-      // Convert amounts to wei (PYUSD has 6 decimals)
-      const amountWei = parseUnits(amount, 6).toString();
-      const priorityFeeWei = parseUnits(priorityFee || '0', 6).toString();
+      // Convert amounts to smallest unit (wei) based on token decimals
+      const amountWei = parseUnits(amount, tokenDecimals).toString();
+      const priorityFeeWei = parseUnits(priorityFee || '0', tokenDecimals).toString();
       const nonceStr = userNonce.toString();
 
       // Construct message with REAL EVVM ID from contract
       const message = constructPaymentMessage(
         evvmId, // Real EVVM ID from contract
         to, // recipient address
-        PYUSD_ADDRESS, // token
+        tokenAddress, // token address (PYUSD or MATE)
         amountWei, // amount in wei
         priorityFeeWei, // priority fee in wei
         nonceStr, // nonce
@@ -154,8 +160,8 @@ export function useEvvmPayment() {
     }
 
     try {
-      const amountWei = parseUnits(paymentData.amount, 6).toString();
-      const priorityFeeWei = parseUnits(paymentData.priorityFee || '0', 6).toString();
+      const amountWei = parseUnits(paymentData.amount, tokenDecimals).toString();
+      const priorityFeeWei = parseUnits(paymentData.priorityFee || '0', tokenDecimals).toString();
 
       const response = await fetch('/api/fishing/submit', {
         method: 'POST',
@@ -163,7 +169,7 @@ export function useEvvmPayment() {
         body: JSON.stringify({
           from: address,
           to: paymentData.to,
-          token: PYUSD_ADDRESS,
+          token: tokenAddress,
           amount: amountWei,
           priorityFee: priorityFeeWei,
           nonce: userNonce.toString(),
@@ -199,8 +205,8 @@ export function useEvvmPayment() {
     }
 
     try {
-      const amountWei = parseUnits(paymentData.amount, 6);
-      const priorityFeeWei = parseUnits(paymentData.priorityFee || '0', 6);
+      const amountWei = parseUnits(paymentData.amount, tokenDecimals);
+      const priorityFeeWei = parseUnits(paymentData.priorityFee || '0', tokenDecimals);
 
       writeContract({
         address: EVVM_ADDRESS,
@@ -210,7 +216,7 @@ export function useEvvmPayment() {
           address, // from
           paymentData.to as `0x${string}`, // to_address
           '', // to_identity (empty string = use to_address)
-          PYUSD_ADDRESS, // token
+          tokenAddress as `0x${string}`, // token (PYUSD or MATE)
           amountWei, // amount
           priorityFeeWei, // priorityFee
           userNonce, // nonce

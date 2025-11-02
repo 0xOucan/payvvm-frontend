@@ -25,19 +25,22 @@ export default function SendPage() {
   const [recipient, setRecipient] = useState("")
   const [amount, setAmount] = useState("")
   const [memo, setMemo] = useState("")
+  const [token, setToken] = useState<'PYUSD' | 'MATE'>('PYUSD')
 
   // State for QR scanner modal
-  const [showScanner, setShowScanner] = useState(false)
+  const [showScanner] = useState(false)
 
   // Read URL parameters on mount
   useEffect(() => {
     const toParam = searchParams.get("to")
     const amountParam = searchParams.get("amount")
     const memoParam = searchParams.get("memo")
+    const tokenParam = searchParams.get("token") as 'PYUSD' | 'MATE' | null
 
     if (toParam) setRecipient(toParam)
     if (amountParam) setAmount(amountParam)
     if (memoParam) setMemo(memoParam)
+    if (tokenParam && (tokenParam === 'PYUSD' || tokenParam === 'MATE')) setToken(tokenParam)
   }, [searchParams])
 
   // Redirect to home if not connected
@@ -64,9 +67,9 @@ export default function SendPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="font-mono">Send PYUSD (Gasless)</CardTitle>
+              <CardTitle className="font-mono">Send Payment (Gasless)</CardTitle>
               <CardDescription className="text-muted-foreground">
-                Sign with EIP-191, fishers execute the transaction
+                Send PYUSD or MATE - Sign with EIP-191, fishers execute the transaction
               </CardDescription>
             </div>
             <Button
@@ -85,6 +88,7 @@ export default function SendPage() {
             initialRecipient={recipient}
             initialAmount={amount}
             initialMemo={memo}
+            initialToken={token}
           />
         </CardContent>
       </Card>

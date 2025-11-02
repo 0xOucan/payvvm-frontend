@@ -8,15 +8,16 @@ interface InvoiceQRProps {
   amount: string
   memo?: string
   address: string
+  token?: 'PYUSD' | 'MATE'
 }
 
-export function InvoiceQR({ amount, memo, address }: InvoiceQRProps) {
+export function InvoiceQR({ amount, memo, address, token = 'PYUSD' }: InvoiceQRProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
-    // Generate QR code data
+    // Generate QR code data with token parameter
     const baseUrl = typeof window !== "undefined" ? window.location.origin : ""
-    const qrData = `${baseUrl}/send?to=${address}&amount=${amount}${memo ? `&memo=${encodeURIComponent(memo)}` : ""}`
+    const qrData = `${baseUrl}/send?to=${address}&amount=${amount}&token=${token}${memo ? `&memo=${encodeURIComponent(memo)}` : ""}`
 
     const canvas = canvasRef.current
     if (!canvas) return
@@ -40,7 +41,7 @@ export function InvoiceQR({ amount, memo, address }: InvoiceQRProps) {
         }
       }
     )
-  }, [amount, memo, address])
+  }, [amount, memo, address, token])
 
   return (
     <Card className="bg-white">
@@ -48,7 +49,7 @@ export function InvoiceQR({ amount, memo, address }: InvoiceQRProps) {
         <canvas ref={canvasRef} width={300} height={300} className="rounded-lg" />
         <p className="mt-4 text-xs text-gray-600 text-center max-w-xs break-all font-mono">
           {typeof window !== "undefined" &&
-            `${window.location.origin}/send?to=${address}&amount=${amount}${memo ? `&memo=${encodeURIComponent(memo)}` : ""}`}
+            `${window.location.origin}/send?to=${address}&amount=${amount}&token=${token}${memo ? `&memo=${encodeURIComponent(memo)}` : ""}`}
         </p>
       </CardContent>
     </Card>

@@ -9,6 +9,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Badge } from "@/components/ui/badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { ArrowLeft, Copy, Check } from "lucide-react"
 import Link from "next/link"
 import { createInvoice } from "@/services/evvm"
@@ -21,9 +29,14 @@ export default function InvoicePage() {
 
   const [amount, setAmount] = useState("")
   const [memo, setMemo] = useState("")
+  const [selectedToken, setSelectedToken] = useState<'PYUSD' | 'MATE'>('PYUSD')
   const [showQR, setShowQR] = useState(false)
   const [invoiceId, setInvoiceId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+
+  // Get token configuration
+  const tokenDecimals = selectedToken === 'PYUSD' ? 6 : 18
+  const tokenSymbol = selectedToken
 
   useEffect(() => {
     if (!isConnected) {
@@ -57,7 +70,7 @@ export default function InvoicePage() {
     if (!address) return
 
     const baseUrl = typeof window !== "undefined" ? window.location.origin : ""
-    const link = `${baseUrl}/send?to=${address}&amount=${amount}${memo ? `&memo=${encodeURIComponent(memo)}` : ""}`
+    const link = `${baseUrl}/send?to=${address}&amount=${amount}&token=${selectedToken}${memo ? `&memo=${encodeURIComponent(memo)}` : ""}`
 
     navigator.clipboard.writeText(link)
     setCopied(true)
@@ -95,16 +108,35 @@ export default function InvoicePage() {
       {!showQR ? (
         <Card className="bg-card/50 backdrop-blur border-primary/50">
           <CardHeader>
-            <CardTitle className="font-mono">Create Invoice (PYUSD)</CardTitle>
-            <CardDescription>Generate a QR code for customers to scan and pay gaslessly</CardDescription>
+            <CardTitle className="font-mono">Create Invoice</CardTitle>
+            <CardDescription>Generate a QR code for customers to scan and pay gaslessly (PYUSD or MATE)</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* Token Selector */}
             <div className="space-y-2">
-              <Label htmlFor="amount">Amount (PYUSD)</Label>
+              <Label htmlFor="token">Token</Label>
+              <div className="flex items-center gap-2">
+                <Select value={selectedToken} onValueChange={(value) => setSelectedToken(value as 'PYUSD' | 'MATE')}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PYUSD">PYUSD (6 decimals)</SelectItem>
+                    <SelectItem value="MATE">MATE (18 decimals)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Badge variant="outline" className="font-mono text-xs">
+                  {tokenDecimals} decimals
+                </Badge>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="amount">Amount ({tokenSymbol})</Label>
               <Input
                 id="amount"
                 type="number"
-                step="0.000001"
+                step={selectedToken === 'PYUSD' ? '0.000001' : '0.000000000000000001'}
                 placeholder="0.00"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
@@ -138,14 +170,18 @@ export default function InvoicePage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex justify-center">
-                <InvoiceQR amount={amount} memo={memo} address={address} />
+                <InvoiceQR amount={amount} memo={memo} address={address} token={selectedToken} />
               </div>
 
               <div className="space-y-4">
                 <div className="p-4 rounded-lg bg-muted space-y-2">
                   <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Token</span>
+                    <Badge variant="outline" className="font-mono text-xs">{tokenSymbol}</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Amount</span>
-                    <span className="font-mono font-semibold">{amount} PYUSD</span>
+                    <span className="font-mono font-semibold">{amount} {tokenSymbol}</span>
                   </div>
                   {memo && (
                     <div className="flex items-center justify-between">

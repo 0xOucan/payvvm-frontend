@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useAccount } from 'wagmi';
-import { isAddress } from 'viem';
+import { isAddress, formatUnits } from 'viem';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,33 +11,61 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Loader2, CheckCircle2, AlertCircle, ExternalLink, Info, ChevronDown } from 'lucide-react';
-import { useEvvmPayment } from '@/hooks/payvvm/useEvvmPayment';
+import { useEvvmPayment, MATE_ADDRESS } from '@/hooks/payvvm/useEvvmPayment';
 import { usePyusdEvvmBalance, PYUSD_ADDRESS } from '@/hooks/payvvm/usePyusdTreasury';
+import { useUserBalance } from '@/hooks/payvvm/useEvvmState';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface PyusdPaymentProps {
   initialRecipient?: string;
   initialAmount?: string;
   initialMemo?: string;
+  initialToken?: 'PYUSD' | 'MATE';
 }
 
-export const PyusdPayment = ({ initialRecipient, initialAmount, initialMemo }: PyusdPaymentProps = {}) => {
-  const { isConnected } = useAccount();
+export const PyusdPayment = ({ initialRecipient, initialAmount, initialMemo, initialToken }: PyusdPaymentProps = {}) => {
+  const { address, isConnected } = useAccount();
   const [recipient, setRecipient] = useState(initialRecipient || '');
   const [amount, setAmount] = useState(initialAmount || '');
   const [priorityFee, setPriorityFee] = useState('0');
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  // Token selection state (default: PYUSD, or from initial prop)
+  const [selectedToken, setSelectedToken] = useState<'PYUSD' | 'MATE'>(initialToken || 'PYUSD');
+
   // Track submitted signatures to prevent duplicates
   const submittedSignaturesRef = useRef<Set<string>>(new Set());
 
-  const evvmBalance = usePyusdEvvmBalance();
-  const payment = useEvvmPayment();
+  // Get token configuration based on selection
+  const tokenAddress = selectedToken === 'PYUSD' ? PYUSD_ADDRESS : MATE_ADDRESS;
+  const tokenDecimals = selectedToken === 'PYUSD' ? 6 : 18;
+  const tokenSymbol = selectedToken;
+
+  // Fetch balances for both tokens
+  const pyusdBalance = usePyusdEvvmBalance();
+  const mateBalance = useUserBalance(address, MATE_ADDRESS as `0x${string}`);
+
+  // Use selected token's balance
+  const selectedBalance = selectedToken === 'PYUSD' ? pyusdBalance : mateBalance;
+  const formattedBalance = selectedToken === 'PYUSD'
+    ? pyusdBalance.formatted
+    : (mateBalance.data ? formatUnits(mateBalance.data, 18) : '0');
+
+  // Pass token config to payment hook
+  const payment = useEvvmPayment(tokenAddress, tokenDecimals);
 
   // Update form values when initial values change (from QR scan or URL params)
   useEffect(() => {
     if (initialRecipient) setRecipient(initialRecipient);
     if (initialAmount) setAmount(initialAmount);
-  }, [initialRecipient, initialAmount]);
+    if (initialToken) setSelectedToken(initialToken);
+  }, [initialRecipient, initialAmount, initialToken]);
 
   // Auto-submit to fishing pool after signature is obtained
   useEffect(() => {
@@ -66,7 +94,12 @@ export const PyusdPayment = ({ initialRecipient, initialAmount, initialMemo }: P
   useEffect(() => {
     if (payment.isSuccess) {
       const refetchTimer = setTimeout(() => {
-        evvmBalance.refetch();
+        // Refetch the balance for the token that was sent
+        if (selectedToken === 'PYUSD') {
+          pyusdBalance.refetch();
+        } else {
+          mateBalance.refetch();
+        }
       }, 500);
 
       setRecipient('');
@@ -82,7 +115,7 @@ export const PyusdPayment = ({ initialRecipient, initialAmount, initialMemo }: P
         clearTimeout(resetTimer);
       };
     }
-  }, [payment.isSuccess, payment, evvmBalance]);
+  }, [payment.isSuccess, payment, pyusdBalance, mateBalance, selectedToken]);
 
   const handleSendPayment = async () => {
     if (!recipient || !isAddress(recipient)) {
@@ -94,7 +127,7 @@ export const PyusdPayment = ({ initialRecipient, initialAmount, initialMemo }: P
     }
 
     const amountNum = parseFloat(amount);
-    const balanceNum = parseFloat(evvmBalance.formatted);
+    const balanceNum = parseFloat(formattedBalance);
 
     if (amountNum > balanceNum) {
       return;
@@ -134,16 +167,16 @@ export const PyusdPayment = ({ initialRecipient, initialAmount, initialMemo }: P
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {evvmBalance.isLoading ? (
+            {selectedBalance.isLoading ? (
               <div className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span className="text-sm text-muted-foreground">Loading...</span>
               </div>
             ) : (
               <>
-                <p className="text-3xl font-bold font-mono">{parseFloat(evvmBalance.formatted).toFixed(2)}</p>
+                <p className="text-3xl font-bold font-mono">{parseFloat(formattedBalance).toFixed(selectedToken === 'PYUSD' ? 2 : 6)}</p>
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="font-mono text-xs bg-background/50">PYUSD</Badge>
+                  <Badge variant="outline" className="font-mono text-xs bg-background/50">{tokenSymbol}</Badge>
                   <span className="text-xs text-muted-foreground">Available to send</span>
                 </div>
               </>
@@ -155,7 +188,7 @@ export const PyusdPayment = ({ initialRecipient, initialAmount, initialMemo }: P
       {/* Payment Form */}
       <Card className="bg-card/50 backdrop-blur border-primary/50">
         <CardHeader>
-          <CardTitle className="font-mono">Send PYUSD Payment</CardTitle>
+          <CardTitle className="font-mono">Send {tokenSymbol} Payment</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Loading EVVM Metadata */}
@@ -168,13 +201,21 @@ export const PyusdPayment = ({ initialRecipient, initialAmount, initialMemo }: P
             </Alert>
           )}
 
-          {/* Token Selector (Fixed to PYUSD) */}
+          {/* Token Selector */}
           <div className="space-y-2">
             <Label htmlFor="token">Token</Label>
             <div className="flex items-center gap-2">
-              <Input id="token" value="PYUSD" disabled className="flex-1" />
+              <Select value={selectedToken} onValueChange={(value) => setSelectedToken(value as 'PYUSD' | 'MATE')}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PYUSD">PYUSD (6 decimals)</SelectItem>
+                  <SelectItem value="MATE">MATE (18 decimals)</SelectItem>
+                </SelectContent>
+              </Select>
               <Badge variant="outline" className="font-mono text-xs">
-                6 decimals
+                {tokenDecimals} decimals
               </Badge>
             </div>
           </div>
@@ -201,7 +242,7 @@ export const PyusdPayment = ({ initialRecipient, initialAmount, initialMemo }: P
               <Input
                 id="amount"
                 type="number"
-                step="0.000001"
+                step={selectedToken === 'PYUSD' ? '0.000001' : '0.000000000000000001'}
                 placeholder="0.00"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
@@ -209,13 +250,13 @@ export const PyusdPayment = ({ initialRecipient, initialAmount, initialMemo }: P
               />
               <Button
                 variant="outline"
-                onClick={() => setAmount(evvmBalance.formatted)}
+                onClick={() => setAmount(formattedBalance)}
               >
                 MAX
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Max: {parseFloat(evvmBalance.formatted).toFixed(2)} PYUSD
+              Max: {parseFloat(formattedBalance).toFixed(selectedToken === 'PYUSD' ? 2 : 6)} {tokenSymbol}
             </p>
           </div>
 
@@ -229,11 +270,11 @@ export const PyusdPayment = ({ initialRecipient, initialAmount, initialMemo }: P
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-4 pt-4">
               <div className="space-y-2">
-                <Label htmlFor="priority-fee">Priority Fee (PYUSD)</Label>
+                <Label htmlFor="priority-fee">Priority Fee ({tokenSymbol})</Label>
                 <Input
                   id="priority-fee"
                   type="number"
-                  step="0.000001"
+                  step={selectedToken === 'PYUSD' ? '0.000001' : '0.000000000000000001'}
                   placeholder="0.00"
                   value={priorityFee}
                   onChange={(e) => setPriorityFee(e.target.value)}
@@ -354,7 +395,7 @@ export const PyusdPayment = ({ initialRecipient, initialAmount, initialMemo }: P
                 <li>Sign payment message with your wallet (EIP-191)</li>
                 <li>Signature submitted to fishing pool API</li>
                 <li>Fisher bot picks up and executes on-chain (pays gas)</li>
-                <li>PYUSD transfers within EVVM instantly</li>
+                <li>{tokenSymbol} transfers within EVVM instantly</li>
                 <li>You pay ZERO gas fees!</li>
               </ol>
             </AlertDescription>
@@ -365,14 +406,14 @@ export const PyusdPayment = ({ initialRecipient, initialAmount, initialMemo }: P
             <p className="text-xs font-mono text-muted-foreground mb-3">Contract Info</p>
             <div className="space-y-2 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">PYUSD Token:</span>
+                <span className="text-muted-foreground">{tokenSymbol} Token:</span>
                 <a
-                  href={`https://sepolia.etherscan.io/address/${PYUSD_ADDRESS}`}
+                  href={`https://sepolia.etherscan.io/address/${tokenAddress}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="font-mono text-primary hover:underline inline-flex items-center gap-1"
                 >
-                  {PYUSD_ADDRESS.slice(0, 6)}...{PYUSD_ADDRESS.slice(-4)}
+                  {tokenAddress.slice(0, 6)}...{tokenAddress.slice(-4)}
                   <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
