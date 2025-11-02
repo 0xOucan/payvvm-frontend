@@ -177,16 +177,75 @@ export function useTransactionCache(address: string | undefined) {
 
     setIsLoading(true);
 
-    // Try to load from cache
-    const cached = loadFromCache(address);
-    if (cached) {
-      setTransactions(cached.transactions);
-      setMetadata(cached.metadata);
-      setIsLoading(false);
-    } else {
-      // Trigger scan
-      scanTransactions(address).finally(() => setIsLoading(false));
-    }
+    // ALWAYS fetch recent transactions first (last 1000 blocks)
+    // This ensures users see the latest activity even with cached data
+    const fetchRecentAndMerge = async () => {
+      try {
+        // Fetch recent transactions (always fresh, never cached)
+        const recentResponse = await fetch(`/api/transactions/recent?address=${address}`);
+        const recentData = await recentResponse.json();
+
+        if (!recentData.success) {
+          throw new Error(recentData.error || 'Failed to fetch recent transactions');
+        }
+
+        const recentTxs = recentData.transactions || [];
+        console.log(`[Transaction Cache] Fetched ${recentTxs.length} recent transactions`);
+
+        // Try to load historical data from cache
+        const cached = loadFromCache(address);
+
+        if (cached) {
+          // Merge recent + cached historical data
+          // Remove duplicates (recent txs might overlap with cache)
+          const recentHashes = new Set(recentTxs.map(tx => tx.hash));
+          const historicalTxs = cached.transactions.filter(tx => !recentHashes.has(tx.hash));
+
+          const mergedTxs = [...recentTxs, ...historicalTxs];
+          mergedTxs.sort((a, b) => b.blockNumber - a.blockNumber);
+
+          console.log(
+            `[Transaction Cache] Merged ${recentTxs.length} recent + ${historicalTxs.length} cached = ${mergedTxs.length} total`
+          );
+
+          setTransactions(mergedTxs);
+          setMetadata({
+            ...cached.metadata,
+            toBlock: recentData.metadata.toBlock, // Update to latest block
+            totalTransactions: mergedTxs.length,
+          });
+        } else {
+          // No cache - show recent txs and trigger full scan in background
+          setTransactions(recentTxs);
+          setMetadata({
+            totalTransactions: recentTxs.length,
+            chunksScanned: 0,
+            totalBlocks: recentData.metadata.blocksScanned,
+            fromBlock: recentData.metadata.fromBlock,
+            toBlock: recentData.metadata.toBlock,
+            scannedAt: Date.now(),
+          });
+
+          // Trigger full scan in background
+          console.log('[Transaction Cache] No cache found, triggering full scan...');
+          scanTransactions(address);
+        }
+      } catch (err) {
+        console.error('[Transaction Cache] Error fetching recent transactions:', err);
+        // Fallback to cache-only or full scan
+        const cached = loadFromCache(address);
+        if (cached) {
+          setTransactions(cached.transactions);
+          setMetadata(cached.metadata);
+        } else {
+          scanTransactions(address);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRecentAndMerge();
   }, [address, loadFromCache, scanTransactions]);
 
   // Manual refresh function
