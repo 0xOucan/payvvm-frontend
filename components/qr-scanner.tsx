@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Camera, X } from "lucide-react"
 
 interface QRScannerProps {
-  onScan: (data: { to: string; amount: string; memo?: string }) => void
+  onScan: (data: { to: string; amount: string; memo?: string; token?: 'PYUSD' | 'MATE' }) => void
   onClose: () => void
 }
 
@@ -83,10 +83,19 @@ export function QRScanner({ onScan, onClose }: QRScannerProps) {
       const to = params.get("to")
       const amount = params.get("amount")
       const memo = params.get("memo")
+      const token = params.get("token") as 'PYUSD' | 'MATE' | null
 
       if (!to || !amount) {
         setError("Invalid QR code: missing recipient or amount")
         return
+      }
+
+      // Prepare scan data with token if valid
+      const scanData = {
+        to,
+        amount,
+        memo: memo || undefined,
+        token: (token === 'PYUSD' || token === 'MATE') ? token : undefined
       }
 
       // Stop scanner and call onScan callback
@@ -97,16 +106,16 @@ export function QRScanner({ onScan, onClose }: QRScannerProps) {
             scannerRef.current?.clear()
             scannerRef.current = null
             setIsScanning(false)
-            onScan({ to, amount, memo: memo || undefined })
+            onScan(scanData)
             onClose()
           })
           .catch((err) => {
             console.error("Error stopping scanner after scan:", err)
-            onScan({ to, amount, memo: memo || undefined })
+            onScan(scanData)
             onClose()
           })
       } else {
-        onScan({ to, amount, memo: memo || undefined })
+        onScan(scanData)
         onClose()
       }
     } catch (err: any) {
