@@ -361,10 +361,10 @@ export async function executeDispersePay(tx: {
     console.log(`   Total Amount: ${tx.amount}`);
     console.log(`   Priority Fee: ${tx.priorityFee}`);
 
-    // Convert recipients to proper format
+    // Convert recipients to proper format with lowercase addresses (must match signature)
     const recipientsData = tx.recipients.map(r => ({
       amount: BigInt(r.amount),
-      to_address: r.to_address as `0x${string}`,
+      to_address: r.to_address.toLowerCase() as `0x${string}`,
       to_identity: r.to_identity || '',
     }));
 
