@@ -160,20 +160,21 @@ export async function executePayment(tx: {
     console.log(`   Priority Fee: ${tx.priorityFee}`);
 
     // Execute the payment
+    // IMPORTANT: Lowercase to, token, and executor addresses to match signature construction
     const hash = await walletClient.writeContract({
       address: EVVM_ADDRESS,
       abi: EVVM_ABI,
       functionName: 'pay',
       args: [
         tx.from as `0x${string}`,
-        tx.to as `0x${string}`,
+        tx.to.toLowerCase() as `0x${string}`,
         '', // to_identity
-        tx.token as `0x${string}`,
+        tx.token.toLowerCase() as `0x${string}`,
         BigInt(tx.amount),
         BigInt(tx.priorityFee),
         BigInt(tx.nonce),
         tx.priorityFlag !== undefined ? tx.priorityFlag : false,
-        (tx.executor || '0x0000000000000000000000000000000000000000') as `0x${string}`,
+        (tx.executor || '0x0000000000000000000000000000000000000000').toLowerCase() as `0x${string}`,
         tx.signature as `0x${string}`,
       ],
       gas: gasLimit,
@@ -369,6 +370,7 @@ export async function executeDispersePay(tx: {
     }));
 
     // Execute the dispersePay
+    // IMPORTANT: Lowercase token and executor addresses to match signature construction
     const hash = await walletClient.writeContract({
       address: EVVM_ADDRESS,
       abi: EVVM_ABI,
@@ -376,12 +378,12 @@ export async function executeDispersePay(tx: {
       args: [
         tx.from as `0x${string}`,
         recipientsData,
-        tx.token as `0x${string}`,
+        tx.token.toLowerCase() as `0x${string}`,
         BigInt(tx.amount),
         BigInt(tx.priorityFee),
         BigInt(tx.nonce),
         tx.priorityFlag !== undefined ? tx.priorityFlag : false,
-        (tx.executor || '0x0000000000000000000000000000000000000000') as `0x${string}`,
+        (tx.executor || '0x0000000000000000000000000000000000000000').toLowerCase() as `0x${string}`,
         tx.signature as `0x${string}`,
       ],
       gas: gasLimit,
