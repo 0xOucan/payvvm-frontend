@@ -53,6 +53,28 @@ const PYUSD_TOKEN = '0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9';
 const MATE_TOKEN = '0x0000000000000000000000000000000000000001';
 const GOLDEN_FISHER = '0x121c631B7aEa24316bD90B22C989Ca008a84E5Ed';
 
+// Format token amounts with proper decimals
+function formatTokenAmount(amount: string, token: string): string {
+  const tokenLower = token.toLowerCase();
+
+  // PYUSD: 6 decimals - show exact amount without rounding
+  if (tokenLower === PYUSD_TOKEN.toLowerCase()) {
+    const value = formatUnits(BigInt(amount), 6);
+    // Remove trailing zeros but keep at least 2 decimal places
+    const num = parseFloat(value);
+    return num.toFixed(6).replace(/\.?0+$/, '');
+  }
+
+  // MATE: 18 decimals - round to 6 decimals for display
+  if (tokenLower === MATE_TOKEN.toLowerCase()) {
+    const value = formatUnits(BigInt(amount), 18);
+    const num = parseFloat(value);
+    return num.toFixed(6).replace(/\.?0+$/, '');
+  }
+
+  return amount;
+}
+
 interface TransactionHistoryProps {
   address: string | null;
   limit?: number;
@@ -311,7 +333,7 @@ function PayVVMTransactionList({ transactions, userAddress }: { transactions: Pa
                 <div className="text-right">
                   <p className="text-lg font-bold font-mono">
                     {tx.txType === 'faucet_claim' ? '+' : (isSender ? '-' : '+')}
-                    {formatUnits(BigInt(tx.amount), tx.token.toLowerCase() === PYUSD_TOKEN.toLowerCase() ? 6 : 18)}
+                    {formatTokenAmount(tx.amount, tx.token)}
                   </p>
                   <p className="text-xs text-muted-foreground font-mono">
                     {tx.token.toLowerCase() === PYUSD_TOKEN.toLowerCase() ? 'PYUSD' : 'MATE'}

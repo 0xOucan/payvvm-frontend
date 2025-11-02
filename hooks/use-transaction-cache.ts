@@ -192,7 +192,20 @@ export function useTransactionCache(address: string | undefined) {
         const recentTxs = recentData.transactions || [];
         console.log(`[Transaction Cache] Fetched ${recentTxs.length} recent transactions`);
 
-        // Try to load historical data from cache
+        // Show first 10 transactions IMMEDIATELY for instant feedback
+        const first10 = recentTxs.slice(0, 10);
+        setTransactions(first10);
+        setMetadata({
+          totalTransactions: first10.length,
+          chunksScanned: 0,
+          totalBlocks: recentData.metadata.blocksScanned,
+          fromBlock: recentData.metadata.fromBlock,
+          toBlock: recentData.metadata.toBlock,
+          scannedAt: Date.now(),
+        });
+        setIsLoading(false); // Show first 10 immediately
+
+        // Then merge with full cache in background
         const cached = loadFromCache(address);
 
         if (cached) {
@@ -208,6 +221,7 @@ export function useTransactionCache(address: string | undefined) {
             `[Transaction Cache] Merged ${recentTxs.length} recent + ${historicalTxs.length} cached = ${mergedTxs.length} total`
           );
 
+          // Update with full merged data
           setTransactions(mergedTxs);
           setMetadata({
             ...cached.metadata,
@@ -215,7 +229,7 @@ export function useTransactionCache(address: string | undefined) {
             totalTransactions: mergedTxs.length,
           });
         } else {
-          // No cache - show recent txs and trigger full scan in background
+          // No cache - show all recent txs and trigger full scan in background
           setTransactions(recentTxs);
           setMetadata({
             totalTransactions: recentTxs.length,
@@ -240,7 +254,6 @@ export function useTransactionCache(address: string | undefined) {
         } else {
           scanTransactions(address);
         }
-      } finally {
         setIsLoading(false);
       }
     };
@@ -248,9 +261,16 @@ export function useTransactionCache(address: string | undefined) {
     fetchRecentAndMerge();
   }, [address, loadFromCache, scanTransactions]);
 
-  // Manual refresh function
+  // Manual refresh function - clears cache and reloads everything
   const refresh = useCallback(() => {
     if (address) {
+      console.log('[Transaction Cache] Manual refresh - clearing cache...');
+      // Clear cache first
+      localStorage.removeItem(getCacheKey(address));
+      // Force full reload by clearing state
+      setTransactions([]);
+      setMetadata(null);
+      // Trigger fresh scan (which will fetch recent + full history)
       return scanTransactions(address, true);
     }
   }, [address, scanTransactions]);

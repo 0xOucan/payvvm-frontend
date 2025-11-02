@@ -37,18 +37,24 @@ function formatTimeAgo(timestamp: number): string {
   return `${Math.floor(diff / 86400)}d ago`
 }
 
-// Format token amount
+// Format token amount with proper decimals
 function formatTokenAmount(amount: string, token: string): string {
   const tokenLower = token.toLowerCase()
 
-  // PYUSD has 6 decimals
+  // PYUSD: 6 decimals - show exact amount without rounding
   if (tokenLower === PYUSD_TOKEN.toLowerCase()) {
-    return (Number(amount) / 1e6).toFixed(2)
+    const value = formatUnits(BigInt(amount), 6)
+    const num = parseFloat(value)
+    // Remove trailing zeros but keep meaningful decimals
+    return num.toFixed(6).replace(/\.?0+$/, '')
   }
 
-  // MATE has 18 decimals
+  // MATE: 18 decimals - round to 6 decimals for display
   if (tokenLower === MATE_TOKEN.toLowerCase()) {
-    return (Number(amount) / 1e18).toFixed(2)
+    const value = formatUnits(BigInt(amount), 18)
+    const num = parseFloat(value)
+    // Round to 6 decimals and remove trailing zeros
+    return num.toFixed(6).replace(/\.?0+$/, '')
   }
 
   return amount
