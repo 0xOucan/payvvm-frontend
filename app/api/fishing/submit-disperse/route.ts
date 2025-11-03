@@ -92,6 +92,8 @@ export async function POST(request: NextRequest) {
     console.log(`   Recipients: ${recipients.length}`);
     console.log(`   Total Amount: ${amount}`);
     console.log(`   Priority Fee: ${priorityFee || '0'}`);
+    console.log(`\n🔍 DEBUG: API Received Recipients:`);
+    console.log(JSON.stringify(recipients, null, 2));
 
     // Execute the dispersePay immediately
     const result = await executeDispersePay({

@@ -8,8 +8,8 @@ import { parseUnits, zeroAddress, sha256, toBytes, encodeAbiParameters } from 'v
 import { useState } from 'react';
 import { useUserAccount, useEvvmId } from './useEvvmState';
 
-export const EVVM_ADDRESS = '0x9486f6C9d28ECdd95aba5bfa6188Bbc104d89C3e' as const;
-export const PYUSD_ADDRESS = '0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9' as const;
+export const EVVM_ADDRESS = '0x9486f6c9d28ecdd95aba5bfa6188bbc104d89c3e' as const;
+export const PYUSD_ADDRESS = '0xcac524bca292aaade2df8a05cc58f0a65b1b3bb9' as const;
 
 // EVVM ABI for dispersePay
 const EVVM_ABI = [
@@ -174,9 +174,10 @@ export function useDispersePayment() {
 
     try {
       // Convert recipients to DispersePayMetadata format
+      // IMPORTANT: Lowercase addresses for signature construction
       const recipientsMetadata: DispersePayMetadata[] = recipients.map(r => ({
         amount: parseUnits(r.amount, 6).toString(), // PYUSD has 6 decimals
-        to_address: r.address,
+        to_address: r.address.toLowerCase(),
         to_identity: r.name || '', // Use name as identity, empty string if not provided
       }));
 
@@ -197,6 +198,8 @@ export function useDispersePayment() {
       const nonceStr = userNonce.toString();
 
       // Construct message with REAL EVVM ID from contract
+      // IMPORTANT: Use priorityFlag=true (async nonce) to prevent nonce race conditions
+      // With async nonces, the signed nonce is used directly instead of nextSyncUsedNonce
       const message = constructDispersePayMessage(
         evvmId,
         recipientsMetadata,
@@ -204,7 +207,7 @@ export function useDispersePayment() {
         totalAmount,
         priorityFeeWei,
         nonceStr,
-        false, // priorityFlag (false = synchronous)
+        true, // priorityFlag (true = asynchronous, prevents nonce race)
         zeroAddress // executor (0x0 = anyone can execute)
       );
 
@@ -227,9 +230,10 @@ export function useDispersePayment() {
 
     try {
       // Convert recipients to metadata format
+      // IMPORTANT: Lowercase addresses to match signature construction
       const recipientsMetadata: DispersePayMetadata[] = disperseData.recipients.map(r => ({
         amount: parseUnits(r.amount, 6).toString(),
-        to_address: r.address,
+        to_address: r.address.toLowerCase(),
         to_identity: r.name || '',
       }));
 
@@ -252,7 +256,7 @@ export function useDispersePayment() {
           nonce: userNonce.toString(),
           signature,
           executor: zeroAddress,
-          priorityFlag: false,
+          priorityFlag: true, // Use async nonce to prevent race conditions
           evvmId: evvmId?.toString(),
         }),
       });

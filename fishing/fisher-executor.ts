@@ -385,6 +385,18 @@ export async function executeDispersePay(tx: {
     console.log('Priority Flag:', tx.priorityFlag);
     console.log('Signature:', tx.signature);
 
+    // Log what will be sent to contract for debugging
+    console.log('\n📋 EXACT CONTRACT CALL ARGS:');
+    console.log('  from:', tx.from);
+    console.log('  toData:', JSON.stringify(recipientsData.map(r => [r.amount.toString(), r.to_address, r.to_identity])));
+    console.log('  token:', tx.token.toLowerCase());
+    console.log('  amount:', tx.amount);
+    console.log('  priorityFee:', tx.priorityFee);
+    console.log('  nonce:', tx.nonce);
+    console.log('  priorityFlag:', tx.priorityFlag !== undefined ? tx.priorityFlag : false);
+    console.log('  executor:', (tx.executor || '0x0000000000000000000000000000000000000000').toLowerCase());
+    console.log('  signature:', tx.signature);
+
     // Execute the dispersePay
     // IMPORTANT: Lowercase token and executor addresses to match signature construction
     const hash = await walletClient.writeContract({
