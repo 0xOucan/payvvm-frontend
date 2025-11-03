@@ -88,6 +88,7 @@ NEXT_PUBLIC_TREASURY_CONTRACT_ARB=0x7d4F9D95e84f6903c7247527e6BF1FA864F7c764
 - **Landing Page** - Hero section with feature highlights and CTAs
 - **Wallet Dashboard** - PYUSD debit card UI, balance cards, activity feed with real HyperSync data
 - **Send Payments** - Address/QR input, amount, gasless EIP-191 signing flow
+- **Payroll (Batch Payments)** - ⚠️ WIP: Multi-recipient PYUSD distribution via dispersePay (gasless)
 - **Invoice Creation** - Generate QR codes for payment requests
 - **Faucet Claims** - UI for MATE and PYUSD testnet faucets (gasless + gas variants)
 - **Withdraw Interface** - Withdraw PYUSD from EVVM to L1/L2
@@ -548,6 +549,67 @@ Powered by Envio HyperSync for real-time indexing.
 - **PayVVM Names**: List of registered EVVM names + "Register Name" button
 - **Notifications**: Preferences for transaction alerts
 - **Danger Zone**: Disconnect wallet button
+
+### `/payroll` - Batch Payment Distribution ⚠️ WIP
+**Multi-recipient PYUSD distribution via EVVM dispersePay**
+
+- **Add Recipients**: Manually add multiple addresses with individual amounts
+- **Import CSV**: Bulk upload payroll data
+- **Preview**: Review total distribution and gas savings
+- **Sign & Execute**: Create EIP-191 signature for all payments (single signature, multiple transfers)
+
+**Status**: Currently experiencing `InvalidSignature()` errors despite mathematically valid signatures. Under investigation with EVVM team.
+
+**Technical Details:**
+- Uses EVVM `dispersePay()` function for batch payments
+- Changed to async nonces (`priorityFlag: true`) to prevent race conditions
+- Signature construction verified via diagnostic tools
+- Fisher bot executes signed batch on-chain
+
+See [Diagnostic Tools](#diagnostic-tools) for debugging scripts.
+
+## Diagnostic Tools
+
+A suite of command-line tools for debugging EVVM transactions and signatures:
+
+### Transaction Analysis
+```bash
+# Analyze any dispersePay transaction
+npx tsx analyze-any-tx.ts <tx-hash>
+
+# Verify recipient amounts add up correctly
+npx tsx analyze-recipients.ts <tx-hash>
+
+# Simulate contract signature verification
+npx tsx simulate-contract-verification.ts <tx-hash>
+```
+
+### State Queries
+```bash
+# Check if async nonce is available
+npx tsx check-async-nonce.ts
+
+# Check user's EVVM PYUSD balance
+npx tsx check-evvm-balance.ts
+
+# Verify EVVM contract ID
+npx tsx check-evvm-id.ts
+```
+
+### Signature Testing
+```bash
+# Test exact signature from transaction
+npx tsx test-exact-signature.ts
+```
+
+These tools were created to debug payroll `InvalidSignature()` errors and verify:
+- ✅ Signatures are mathematically valid
+- ✅ Message construction matches contract format
+- ✅ Nonce availability
+- ✅ Balance sufficiency
+- ✅ Recipient amounts validate
+
+Despite all checks passing, transactions still revert—issue under investigation.
 
 ## Components
 
